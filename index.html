@@ -445,7 +445,13 @@ async function W(q, ok){
 }
 async function worker(path, body){
   const {data} = await S.sb.auth.getSession();
-  const r = await fetch(CONFIG.WORKER_URL.replace(/\/$/,"") + path, {method: body ? "POST" : "GET", headers:{Authorization:"Bearer " + data.session?.access_token, "Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined});
+  const url = CONFIG.WORKER_URL.replace(/\/$/,"") + path, opts = {method: body ? "POST" : "GET", headers:{Authorization:"Bearer " + data.session?.access_token, "Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined};
+  // Some networks drop Chrome's first (HTTP/3) connection; Chrome falls back on the next try.
+  let r;
+  for (let i = 0; ; i++) {
+    try { r = await fetch(url, opts); break; }
+    catch (e) { if (i >= 2) throw new Error("Couldn't reach the official profiles. Check your connection and try again."); await new Promise(res => setTimeout(res, 600 * (i + 1))); }
+  }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { if (j.detail) console.warn(j.detail); throw new Error(j.error || "Couldn't reach the official profiles right now. Try again later."); }
   return j;
