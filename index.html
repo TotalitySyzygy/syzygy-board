@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Syzygy Run Board</title>
+<meta name="description" content="Syzygy Legion run board: characters, availability and group planning for AION 2.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Italiana&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+window.SYZYGY_CONFIG = {
+  SUPABASE_URL: "https://wktssevdbenoemkqjgyu.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrdHNzZXZkYmVub2Vta3FqZ3l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1ODk5NDIsImV4cCI6MjEwODE2NTk0Mn0.xXf7ju0Ftah3qF4g5BuFDGghfY1CeA9l9pc7taHjeGc",
+  WORKER_URL: "https://syzygy-sync.YOUR-SUBDOMAIN.workers.dev"
+};
+</script>
+<style>
+/* Concept: an orrery. The week is a dial, members are orbits, a chosen hour is the line they align on. */
+:root{
+  color-scheme:dark;
+  --sky-0:#0a1524; --sky-1:#11243a; --panel:#122a40; --raised:#173350; --line:#24435f; --line-soft:#1b3550;
+  --text:#e5edf0; --mist:#8ea6b7; --aether:#62d6c8; --aether-dim:#2b6b6c; --gold:#e8c67b; --rose:#f2907f;
+  --star:.9;
+  --f-display:"Italiana","Didot","Bodoni 72",Georgia,serif;
+  --f-ui:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  color-scheme:light;
+  --sky-0:#e7eef2; --sky-1:#f3f7f8; --panel:#ffffff; --raised:#f4f8f9; --line:#cfdde4; --line-soft:#e1eaee;
+  --text:#0f2233; --mist:#536e80; --aether:#0d7f74; --aether-dim:#a9d9d3; --gold:#8b6513; --rose:#b23a2a; --star:0}}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --sky-0:#e7eef2; --sky-1:#f3f7f8; --panel:#ffffff; --raised:#f4f8f9; --line:#cfdde4; --line-soft:#e1eaee;
+  --text:#0f2233; --mist:#536e80; --aether:#0d7f74; --aether-dim:#a9d9d3; --gold:#8b6513; --rose:#b23a2a; --star:0}
+
+*{box-sizing:border-box}
+html{background:var(--sky-0)}
+body{margin:0;min-height:100vh;color:var(--text);font:400 15px/1.55 var(--f-ui);font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,var(--sky-1) 0,var(--sky-0) 520px) no-repeat,var(--sky-0)}
+#stars{position:fixed;inset:0;width:100%;height:100%;opacity:var(--star);pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;margin:0;text-wrap:balance;letter-spacing:.02em}
+h2{font-size:2.4rem;line-height:1.05}
+h3{font-size:1.6rem;line-height:1.1}
+p{margin:0}
+.mist{color:var(--mist)}
+.small{font-size:.86rem}
+a{color:var(--aether)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:4px}
+[hidden]{display:none!important}
+
+/* top bar */
+.bar{display:flex;align-items:center;gap:20px;padding-block:calc(18px + env(safe-area-inset-top)) 0;flex-wrap:wrap}
+.mark{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
+.mark h1{font-size:2.1rem;line-height:1;letter-spacing:.06em}
+.mark span{font-size:.8rem;color:var(--mist);display:block;margin-top:2px}
+.bar .sp{flex:1}
+.who{display:flex;align-items:center;gap:10px;font-size:.9rem}
+nav.tabs{display:flex;gap:4px;margin-top:18px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line-soft)}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{position:relative;background:none;border:0;padding:10px 14px 16px;cursor:pointer;color:var(--mist);font-weight:500;white-space:nowrap}
+nav.tabs button:hover{color:var(--text)}
+nav.tabs button[aria-selected="true"]{color:var(--text)}
+nav.tabs button[aria-selected="true"]::after{content:"";position:absolute;left:50%;bottom:5px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold)}
+
+main{padding-block:34px 90px;display:grid;gap:44px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.head p{margin-top:8px;color:var(--mist);max-width:62ch}
+.panel{background:var(--panel);border:1px solid var(--line-soft);border-radius:16px}
+.pad{padding:20px 22px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* buttons */
+.btn{border:1px solid var(--line);background:transparent;padding:8px 15px;border-radius:999px;cursor:pointer;font-weight:600;font-size:.88rem;white-space:nowrap}
+.btn:hover{border-color:var(--mist)}
+.btn.prime{background:var(--gold);border-color:var(--gold);color:var(--sky-0)}
+.btn.prime:hover{filter:brightness(1.08)}
+.btn.link{border:0;padding:6px 4px;color:var(--mist);border-radius:6px}
+.btn.link:hover{color:var(--text)}
+.btn.warn{color:var(--rose)}
+.btn.sm{padding:5px 11px;font-size:.82rem}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* inputs */
+input[type=text],input[type=number],input[type=url],input[type=datetime-local],select,textarea{background:var(--sky-0);border:1px solid var(--line);border-radius:10px;padding:8px 11px;width:100%;min-width:0}
+textarea{min-height:70px;resize:vertical}
+label.f{display:grid;gap:5px;font-size:.84rem;color:var(--mist)}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.check{display:flex;gap:8px;align-items:center;font-size:.9rem;color:var(--text)}
+
+/* notices */
+.notice{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:16px 20px;border:1px solid var(--line);border-radius:16px;background:var(--raised)}
+.notice b{font-weight:600}
+
+/* ---------- plan / dial ---------- */
+.plan{display:grid;grid-template-columns:minmax(0,460px) minmax(0,1fr);gap:40px;align-items:start}
+@media (max-width:900px){.plan{grid-template-columns:minmax(0,1fr)}}
+.dialbox{display:grid;gap:14px;justify-items:center}
+#dial{width:100%;max-width:460px;height:auto;display:block;touch-action:pan-y;cursor:crosshair;user-select:none;-webkit-user-select:none}
+#dial .track{fill:none;stroke:var(--line-soft);stroke-width:1}
+#dial .arc{fill:none;stroke:var(--aether);stroke-linecap:butt;opacity:.85}
+#dial .band{fill:none;stroke:var(--aether)}
+#dial .sep{stroke:var(--line);stroke-width:1}
+#dial .tick{stroke:var(--line);stroke-width:1}
+#dial .dl{fill:var(--mist);font:500 12px var(--f-ui);text-anchor:middle;dominant-baseline:middle}
+#dial .dl.today{fill:var(--text)}
+#dial .now{fill:var(--aether)}
+#dial .best{fill:var(--gold)}
+#dial .ray{stroke:var(--gold);stroke-width:1.5}
+#dial .body{fill:var(--sky-0);stroke:var(--line);stroke-width:1}
+#dial .body.on{fill:var(--gold);stroke:var(--gold);filter:drop-shadow(0 0 4px var(--gold))}
+#dial .core{fill:var(--panel);stroke:var(--line)}
+#dial .ch{fill:var(--text);font:400 34px var(--f-display);text-anchor:middle}
+#dial .cd{fill:var(--mist);font:500 13px var(--f-ui);text-anchor:middle}
+#dial #sel{transition:transform .25s cubic-bezier(.3,.7,.2,1)}
+#dial.dragging #sel{transition:none}
+@media (prefers-reduced-motion:no-preference){
+  #dial.intro .arc{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.1s cubic-bezier(.3,.7,.2,1) forwards}
+  #dial.intro #sel{animation:swing 1.2s cubic-bezier(.3,.7,.2,1)}
+}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes swing{from{opacity:0}}
+.stepper{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center}
+.stepper .btn{min-width:40px}
+.when{display:grid;gap:4px}
+.when h3{font-size:2.6rem}
+
+/* groups */
+.groups{display:grid}
+.group{padding:22px 0;border-top:1px solid var(--line-soft);display:grid;gap:14px}
+.group:first-child{border-top:0;padding-top:4px}
+.ghead{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.ghead .meta{color:var(--mist);font-size:.86rem}
+.flag{color:var(--gold);font-size:.84rem;font-weight:600}
+.members{display:grid;gap:2px}
+.mem{display:grid;grid-template-columns:22px minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:7px 10px;border-radius:10px}
+.mem:hover{background:var(--raised)}
+.mem .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mem .nm b{font-weight:600}
+.mem .il{font-weight:600;min-width:52px;text-align:right}
+.mem.open{grid-template-columns:22px 1fr;color:var(--mist);font-style:italic}
+.role{width:18px;height:18px;color:var(--mist)}
+.gfoot{display:flex;gap:6px;flex-wrap:wrap}
+.idle{color:var(--mist);font-size:.92rem;border-top:1px solid var(--line-soft);padding-top:18px}
+
+/* energy gauge */
+.eg{display:flex;align-items:center;gap:7px;font-size:.82rem;white-space:nowrap}
+.eg svg{width:22px;height:22px;transform:rotate(-90deg)}
+.eg .t{fill:none;stroke:var(--line);stroke-width:3}
+.eg .v{fill:none;stroke:var(--aether);stroke-width:3;stroke-linecap:round}
+.eg.soon .v{stroke:var(--gold)} .eg.capped .v{stroke:var(--rose)}
+.eg.capped{color:var(--rose)} .eg.soon{color:var(--gold)}
+.eg.off{color:var(--mist)}
+
+/* energy watch */
+.watch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+.watch>div{padding:20px 22px;border-left:1px solid var(--line-soft)}
+.watch>div:first-child{border-left:0}
+@media (max-width:760px){.watch{grid-template-columns:1fr}.watch>div{border-left:0;border-top:1px solid var(--line-soft)}.watch>div:first-child{border-top:0}}
+.watch .big{font:400 2.8rem/1 var(--f-display)}
+.watch .cap .big{color:var(--rose)} .watch .soon .big{color:var(--gold)}
+.watch ul{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:5px;font-size:.9rem}
+.watch li{display:flex;justify-content:space-between;gap:10px}
+
+/* runs timeline */
+.timeline{display:grid;gap:30px}
+.tday h3{font-size:1.5rem;margin-bottom:10px}
+.tlist{display:grid;border-left:1px solid var(--line);margin-left:6px}
+.run{position:relative;display:grid;grid-template-columns:110px minmax(0,1fr);gap:20px;padding:6px 0 26px 26px}
+.run::before{content:"";position:absolute;left:-5px;top:16px;width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px var(--sky-0)}
+.run .t{font:400 2rem/1 var(--f-display);padding-top:6px}
+.run .t small{display:block;font:500 .78rem var(--f-ui);color:var(--mist);margin-top:6px}
+@media (max-width:620px){.run{grid-template-columns:1fr;gap:8px}}
+.run .body{display:grid;gap:10px}
+.run .note{color:var(--mist);font-size:.9rem}
+.tag{font-size:.78rem;font-weight:600;color:var(--mist);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+.tag.ok{color:var(--aether);border-color:var(--aether-dim)}
+details.new{border:1px solid var(--line-soft);border-radius:16px;background:var(--panel)}
+details.new summary{cursor:pointer;padding:14px 20px;font-weight:600;list-style:none}
+details.new summary::-webkit-details-marker{display:none}
+details.new form{padding:0 20px 20px;display:grid;gap:14px}
+
+/* content */
+.acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px}
+.acts>*{min-width:0}
+.act{display:grid;gap:12px;padding:22px}
+.act .range{color:var(--gold);font-weight:600;font-size:.9rem}
+.act .loot{color:var(--mist);font-size:.9rem;max-width:60ch}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{display:inline-flex;gap:6px;align-items:center;font-size:.84rem;padding:3px 10px 3px 6px;border-radius:999px;background:var(--raised);border:1px solid var(--line-soft)}
+.pill .role{width:14px;height:14px}
+.pill.soft{opacity:.55;border-style:dashed}
+.heat{display:grid;grid-template-columns:34px repeat(24,minmax(0,1fr));gap:2px;font-size:.68rem;align-items:center;min-width:340px}
+.heat .c{height:12px;border-radius:2px;background:var(--line-soft)}
+.heat .c[data-k]{cursor:pointer}
+.heat .c[data-k]:hover{outline:1px solid var(--gold)}
+.heat .dl,.heat .hl{color:var(--mist)}
+.scrollx{overflow-x:auto}
+
+/* roster */
+.ascent{padding:26px 22px 18px}
+.ascent .inner{position:relative;min-width:700px;margin:0 80px 0 12px}
+.ascent .gate b{line-height:1.3}
+.ascent .track{position:relative;height:2px;background:linear-gradient(90deg,var(--line),var(--gold))}
+.ascent .gate{position:absolute;top:-34px;border-left:1px dashed var(--line);font-size:.76rem;color:var(--mist);padding-left:6px;white-space:nowrap}
+.ascent .gate b{display:block;color:var(--gold);font-weight:600}
+.ascent .lanes{position:relative;margin-top:12px}
+.ascent .orb{position:absolute;display:flex;align-items:center;gap:6px;font-size:.78rem;white-space:nowrap;transform:translateX(-6px)}
+.ascent .orb i{width:12px;height:12px;border-radius:50%;background:var(--aether);box-shadow:0 0 8px var(--aether)}
+.ascent .orb.Main i{background:var(--gold);box-shadow:0 0 10px var(--gold)}
+.ascent .orb.Fodder i{background:var(--mist);box-shadow:none}
+.legend{display:flex;gap:18px;font-size:.82rem;color:var(--mist);margin-top:12px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:var(--aether)}
+.legend .m i{background:var(--gold)} .legend .f i{background:var(--mist)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line-soft);border-radius:16px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line-soft);white-space:nowrap;vertical-align:middle}
+th{font-weight:500;color:var(--mist);font-size:.82rem}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--aether);margin-left:6px;vertical-align:middle}
+.dot.err{background:var(--rose)}
+.pity{display:flex;gap:6px;flex-wrap:wrap}
+.pity span{font-size:.78rem;color:var(--mist)}
+.pity span.done{color:var(--aether)}
+
+/* my characters */
+.chars{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.char{padding:18px 20px;display:grid;gap:14px}
+.char .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.char h3{font-size:1.7rem}
+.char .sub{display:flex;gap:8px;align-items:center;color:var(--mist);font-size:.88rem;margin-top:4px}
+.char .sub .role{width:15px;height:15px}
+.qi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kind{font-size:.76rem;font-weight:600;padding:1px 9px;border-radius:999px;border:1px solid var(--line);color:var(--mist)}
+.kind.Main{color:var(--gold);border-color:var(--gold)}
+.linkline{font-size:.84rem;color:var(--mist)}
+.avail{display:grid;grid-template-columns:54px repeat(7,minmax(34px,1fr));gap:3px;user-select:none;-webkit-user-select:none;min-width:340px}
+.avail .h{font-size:.72rem;color:var(--mist);text-align:right;padding-right:8px;align-self:center}
+.avail .d{font-size:.8rem;font-weight:600;color:var(--mist);text-align:center;padding-bottom:4px}
+.avail .s{height:22px;border:0;padding:0;border-radius:4px;background:var(--line-soft);cursor:pointer}
+.avail .s.on{background:var(--aether)}
+.avail .s:hover{outline:1px solid var(--mist)}
+
+/* members (officers) */
+.mlist{display:grid}
+.mrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 4px;border-top:1px solid var(--line-soft);flex-wrap:wrap}
+.mrow:first-child{border-top:0}
+
+/* routine */
+.steps{list-style:none;margin:0;padding:0}
+.steps li{display:grid;grid-template-columns:96px minmax(0,1fr);gap:18px;padding:16px 0;border-top:1px solid var(--line-soft)}
+.steps li:first-child{border-top:0}
+.steps .il{font:400 1.6rem/1 var(--f-display);color:var(--gold)}
+.steps ul,.plain{margin:6px 0 0;padding-left:18px;color:var(--mist)}
+.steps li li,.plain li{margin:3px 0}
+.routine{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
+@media (max-width:860px){.routine{grid-template-columns:1fr}}
+
+/* modal */
+.scrim{position:fixed;inset:0;z-index:20;background:rgba(5,12,22,.66);display:flex;justify-content:center;align-items:flex-start;overflow-y:auto;padding:max(28px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 28px max(14px,env(safe-area-inset-left))}
+.modal{width:min(720px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;display:grid;gap:18px}
+fieldset{border:1px solid var(--line-soft);border-radius:12px;padding:14px 16px;margin:0;display:grid;gap:12px}
+legend{padding:0 6px;font-weight:600;font-size:.9rem}
+.farm{display:grid;grid-template-columns:minmax(130px,1.5fr) repeat(3,minmax(70px,1fr));gap:8px 12px;align-items:center;font-size:.88rem}
+.farm .hd{color:var(--mist);font-size:.8rem}
+.found{display:grid;gap:6px}
+.found button{text-align:left;border:1px solid var(--line);background:var(--sky-0);border-radius:10px;padding:8px 12px;cursor:pointer}
+.found button:hover{border-color:var(--gold)}
+
+#toast{position:fixed;left:50%;bottom:max(22px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:30;background:var(--text);color:var(--sky-0);padding:10px 18px;border-radius:999px;font-weight:600;font-size:.9rem;max-width:calc(100% - 32px)}
+.empty{padding:34px 22px;text-align:center;display:grid;gap:10px;justify-items:center;color:var(--mist)}
+.empty h3{color:var(--text)}
+</style>
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+<div class="wrap">
+  <header>
+    <div class="bar">
+      <a class="mark" href="#" data-tab-go="plan" aria-label="Syzygy run board home">
+        <svg width="54" height="22" viewBox="0 0 54 22" aria-hidden="true"><line x1="2" y1="11" x2="52" y2="11" stroke="var(--gold)" stroke-width=".8" opacity=".6"/><circle cx="11" cy="11" r="9" fill="var(--gold)"/><circle cx="32" cy="11" r="5" fill="var(--aether)"/><circle cx="46" cy="11" r="3" fill="var(--sky-0)" stroke="var(--mist)" stroke-width="1.2"/></svg>
+        <div><h1>Syzygy</h1><span>Legion run board</span></div>
+      </a>
+      <div class="sp"></div>
+      <div class="who" id="who"></div>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+  </header>
+  <main id="main"></main>
+</div>
+<div id="modal-root"></div>
+<div id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+"use strict";
+const CONFIG = window.SYZYGY_CONFIG || {};
+const configured = !!(CONFIG.SUPABASE_URL && !/YOUR-/.test(CONFIG.SUPABASE_URL) && CONFIG.SUPABASE_ANON_KEY && !/YOUR-/.test(CONFIG.SUPABASE_ANON_KEY));
+const workerOn = !!(CONFIG.WORKER_URL && !/YOUR-/.test(CONFIG.WORKER_URL));
+
+/* ===== game data ===== */
+const CAP = 840, RATE = 5;  // Odyle energy: 840 cap for subscribers, +120 a day
+const MINP = 3;             // smallest group worth forming
+const CLASS_ROLE = {Templar:"Tank",Gladiator:"DPS",Assassin:"DPS",Ranger:"DPS",Sorcerer:"DPS",Elementalist:"DPS",Cleric:"Healer",Chanter:"Support"};
+const CLASSES = Object.keys(CLASS_ROLE), ROLES = ["Tank","Healer","Support","DPS"], KINDS = ["Main","Alt","Fodder"];
+const REGIONS = {nae:"NA East", naw:"NA West", eu:"Europe", la:"Latin America", as:"Asia"};
+const ACTS = [
+  {id:"draupnir",name:"Draupnir Cave",kind:"Expedition",min:1000,max:1400,size:5,energy:true,farm:true,loot:"Run exploration 3 times for the pity chest. Alts may need extra conquest runs to reach 1,400."},
+  {id:"vakron",name:"Vakron Sky Island",kind:"Expedition",min:1400,max:2100,size:5,energy:true,farm:true,loot:"Armor and guard. Upgrade no higher than +10 on this gear."},
+  {id:"urugugu",name:"Urugugu Canyon",kind:"Expedition",min:1400,max:2100,size:5,energy:true,farm:true,loot:"Accessories. Upgrade no higher than +10."},
+  {id:"t1",name:"Transcendence 1",kind:"Transcendence",min:1600,max:1900,size:5,energy:true,noMains:true,loot:"For alts. Mains run it once or twice only if they need it to reach 1,900."},
+  {id:"t2",name:"Transcendence 2",kind:"Transcendence",min:1900,max:null,size:5,energy:true,cards:"green",loot:"Shattered Arkanis and Deus Research for the green Arcana set."},
+  {id:"horn",name:"Ferocious Horn Den",kind:"Expedition",min:2100,max:2800,size:5,energy:true,farm:true,loot:"Armor and guard. Clear exploration for the pity chest, but hold the claim until conquest pity."},
+  {id:"fire",name:"Fire Temple",kind:"Expedition",min:2100,max:2800,size:5,energy:true,farm:true,loot:"Accessories. Mostly a pity chest, since crafted is the goal. Alts run it as needed."},
+  {id:"t3",name:"Transcendence 3",kind:"Transcendence",min:2200,max:null,size:5,energy:true,cards:"blue",loot:"Arkanis and Deus for blue Arcana cards."},
+  {id:"abyss",name:"Abyss group",kind:"Abyss",min:1000,max:null,size:5,energy:false,loot:"Abyss command missions and PvP. Uses no Odyle energy."},
+  {id:"ludra",name:"Ludra raid",kind:"Raid",min:2800,max:null,size:10,energy:false,loot:"Abyssal Forge: Ludra, ten players, for the new accessories."}
+];
+const ACT = Object.fromEntries(ACTS.map(a => [a.id, a]));
+const FARMS = ACTS.filter(a => a.farm);
+const GATES = [[1000,"Draupnir"],[1400,"Vakron, Urugugu"],[1600,"Transcendence 1"],[1900,"Transcendence 2"],[2100,"Horn Den, Fire Temple"],[2500,"Target"],[2800,"Ludra"]];
+
+/* ===== time: availability is stored as UTC hour-of-week (0 = Sunday 00:00 UTC) ===== */
+const OFF = Math.round(-new Date().getTimezoneOffset() / 60);
+const DN = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], DL = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const ORDER = [3,4,5,6,0,1,2];   // reset week starts Wednesday
+const toUTC = (ld, lh) => (((ld*24 + lh - OFF) % 168) + 168) % 168;
+const kDay = k => ORDER[Math.floor(k/24)], kHour = k => k % 24, kUTC = k => toUTC(kDay(k), kHour(k));
+const nowK = () => { const d = new Date(); return ORDER.indexOf(d.getDay())*24 + d.getHours(); };
+const hr = h => (h % 12 || 12) + (h < 12 ? " AM" : " PM");
+const hrs = h => (h % 12 || 12) + (h < 12 ? "a" : "p");
+const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone.split("/").pop().replace(/_/g," ") + " time"; } catch { return "local time"; } })();
+const fmtDay = new Intl.DateTimeFormat(undefined,{weekday:"long",month:"short",day:"numeric"});
+const fmtTime = new Intl.DateTimeFormat(undefined,{hour:"numeric",minute:"2-digit"});
+const fmtFull = new Intl.DateTimeFormat(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+function nextOcc(ld, lh){ const n = new Date(), d = new Date(n); d.setMinutes(0,0,0); d.setHours(lh); d.setDate(d.getDate() + ((ld - d.getDay() + 7) % 7)); if (d.getTime() < n.getTime() - 30*60e3) d.setDate(d.getDate() + 7); return d.getTime(); }
+function ago(ms){ if (!ms) return ""; const m = Math.round((Date.now() - ms)/60e3); if (m < 60) return `${Math.max(1,m)} min ago`; const h = Math.round(m/60); if (h < 36) return `${h} h ago`; return `${Math.round(h/24)} d ago`; }
+function until(ms){ const m = Math.round((ms - Date.now())/60e3); if (m < 0) return "started"; if (m < 60) return `in ${m} min`; const h = Math.round(m/60); if (h < 36) return `in ${h} h`; return `in ${Math.round(h/24)} days`; }
+
+/* ===== utils ===== */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const n0 = v => (Number.isFinite(+v) ? +v : 0);
+const fmt = v => n0(v).toLocaleString("en-US");
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c === "x" ? r : (r&3|8)).toString(16); }));
+const clone = o => JSON.parse(JSON.stringify(o));
+function toast(msg){ const t = document.getElementById("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 2800); }
+const ICON = {
+  Tank:'<path d="M9 1.8 15 4v5c0 3.6-2.6 6.3-6 7.3C5.6 15.3 3 12.6 3 9V4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+  Healer:'<path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+  Support:'<path d="M3 15C3 8 7.5 3 15 3c0 7-5 12-12 12z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 15 10.5 7.5" stroke="currentColor" stroke-width="1.3"/>',
+  DPS:'<path d="M3.5 14.5 12.5 5.5M10 3h5v5M4.5 10.5l3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+};
+const roleOf = c => c.role || CLASS_ROLE[c.cls] || "DPS";
+const roleIcon = c => { const r = roleOf(c); return `<svg class="role" viewBox="0 0 18 18" role="img" aria-label="${r}"><title>${r}</title>${ICON[r]}</svg>`; };
+
+/* ===== energy ===== */
+function proj(c){ if (!c.energyOn || c.energy === "" || c.energy == null) return null; const h = Math.max(0,(Date.now() - n0(c.energyAt))/3.6e6); return Math.min(CAP, n0(c.energy) + RATE*h); }
+function toCap(c){ const p = proj(c); return p == null ? null : (CAP - p)/RATE; }
+function urg(c){ const p = proj(c); return p == null ? .4 : p/CAP + (p >= CAP ? .5 : 0); }
+function gauge(c){
+  if (!c.energyOn) return `<span class="eg off" title="Reach level 22 and finish the Krao Cave story quest to start banking">Not banking</span>`;
+  const p = proj(c); if (p == null) return `<span class="eg off">No reading</span>`;
+  const h = toCap(c), cls = p >= CAP ? "capped" : h < 24 ? "soon" : "", C = 2*Math.PI*9, f = p/CAP;
+  const txt = p >= CAP ? "Capped" : h < 24 ? `${Math.floor(p)}, full in ${Math.ceil(h)} h` : `${Math.floor(p)}`;
+  return `<span class="eg ${cls}" title="${Math.floor(p)} of ${CAP} Odyle energy, projected at +120 a day"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="t" cx="11" cy="11" r="9"/><circle class="v" cx="11" cy="11" r="9" stroke-dasharray="${(C*f).toFixed(1)} ${C.toFixed(1)}"/></svg>${txt}</span>`;
+}
+
+/* ===== eligibility & planning ===== */
+function elig(a, c){
+  const il = n0(c.il);
+  if (n0(c.level) < 45) return {ok:false, why:"Below level 45"};
+  if (il < a.min) return {ok:false, why:`Needs ${fmt(a.min)}`};
+  if (a.max && il >= a.max) return {ok:false, why:"Outgrown"};
+  if (a.farm && c.farm?.[a.id]?.done) return {ok:false, why:"Geared from here"};
+  if (a.cards === "green" && n0(c.green) >= 5) return {ok:false, why:"Green set done"};
+  if (a.cards === "blue" && n0(c.blue) >= 5) return {ok:false, why:"Blue set done"};
+  if (a.noMains && c.type === "Main") return {ok:false, soft:true, why:"Main, only if needed"};
+  return {ok:true};
+}
+function bestFor(a, p){ let b = null; for (const c of p.chars||[]) { if (!elig(a,c).ok) continue; const u = urg(c); if (!b || u > b.u) b = {p,c,u}; } return b; }
+function buildParty(cands, size){
+  const pool = [...cands].sort((x,y) => y.u - x.u), party = [];
+  const take = f => { const i = pool.findIndex(f); if (i >= 0) party.push(pool.splice(i,1)[0]); };
+  take(m => roleOf(m.c) === "Tank"); take(m => roleOf(m.c) === "Healer");
+  if (!party.some(m => roleOf(m.c) === "Healer")) take(m => roleOf(m.c) === "Support");
+  while (party.length < size && pool.length) party.push(pool.shift());
+  return party;
+}
+function planAt(u){
+  const free = players().filter(p => (p.avail||[]).includes(u)), used = new Set(), groups = [];
+  for (;;) {
+    let best = null;
+    for (const a of ACTS.filter(x => x.energy)) {
+      const cands = free.filter(p => !used.has(p.id)).map(p => bestFor(a,p)).filter(Boolean);
+      if (cands.length < MINP) continue;
+      const party = buildParty(cands, a.size), score = party.reduce((t,m) => t + m.u, 0);
+      if (!best || score > best.score) best = {a, party, score};
+    }
+    if (!best) break;
+    groups.push(best); best.party.forEach(m => used.add(m.p.id));
+  }
+  return {free, groups, idle: free.filter(p => !used.has(p.id))};
+}
+const freeAt = u => players().filter(p => (p.avail||[]).includes(u)).length;
+
+/* ===== state ===== */
+const S = {sb:null, session:null, me:null, members:[], runs:[], demo:false, loading:configured, tab:"plan", sel:null, editing:null, needRender:false, intro:true};
+const players = () => S.demo ? DEMO.players : S.members.filter(m => m.approved);
+const runs = () => S.demo ? DEMO.runs : S.runs;
+const P = id => (S.demo ? DEMO.players : S.members).find(p => p.id === id);
+const chars = () => players().flatMap(p => (p.chars||[]).map(c => ({p, c})));
+const live = () => !S.demo && S.sb && S.me?.approved;
+const officer = () => S.demo || (live() && S.me.is_officer);
+
+/* ===== data layer ===== */
+function mapChar(r){ return {id:r.id, member_id:r.member_id, name:r.name, cls:r.cls, role:r.role||"", type:r.kind, level:r.level, il:r.il, energyOn:r.energy_on, energy:r.energy == null ? "" : r.energy, energyAt:r.energy_at ? Date.parse(r.energy_at) : 0, farm:r.farm||{}, green:r.green, blue:r.blue, orange:r.orange, notes:r.notes||"", region:r.region, serverId:r.server_id, charKey:r.char_key, serverName:r.server_name, cp:r.cp, gear:r.gear, syncedAt:r.synced_at ? Date.parse(r.synced_at) : 0, syncError:r.sync_error, sort:r.sort}; }
+function rowChar(c, mid){ return {id:c.id, member_id:mid, name:c.name, cls:c.cls, role:c.role || null, kind:c.type, level:n0(c.level), il:n0(c.il), energy_on:!!c.energyOn, energy:c.energy === "" ? null : n0(c.energy), energy_at:c.energyAt ? new Date(c.energyAt).toISOString() : null, farm:c.farm||{}, green:n0(c.green), blue:n0(c.blue), orange:!!c.orange, notes:c.notes||"", region:c.region || null, server_id:c.serverId || null, char_key:c.charKey || null, server_name:c.serverName || null}; }
+let loadTimer = null;
+const scheduleLoad = (ms = 350) => { clearTimeout(loadTimer); loadTimer = setTimeout(loadAll, ms); };
+async function loadAll(){
+  if (!S.sb || !S.session) return;
+  const uid = S.session.user.id;
+  const [m, c, r, s] = await Promise.all([
+    S.sb.from("members").select("*").order("handle"),
+    S.sb.from("characters").select("*").order("sort").order("created_at"),
+    S.sb.from("runs").select("*").gte("start_at", new Date(Date.now() - 7*864e5).toISOString()).order("start_at"),
+    S.sb.from("signups").select("*")
+  ]);
+  if (m.error) { toast("Couldn't load the board: " + m.error.message); return; }
+  const cs = (c.data||[]).map(mapChar), su = s.data||[];
+  S.members = (m.data||[]).map(x => ({...x, avail:x.avail||[], chars:cs.filter(y => y.member_id === x.id)}));
+  S.runs = (r.data||[]).map(x => ({id:x.id, act:x.act, start:Date.parse(x.start_at), size:x.size, note:x.note, by:x.created_by, signups:Object.fromEntries(su.filter(y => y.run_id === x.id).map(y => [y.member_id, {c:y.char_id, ok:y.ok}]))}));
+  S.me = S.members.find(x => x.user_id === uid) || S.me;
+  S.loading = false; render();
+}
+async function W(q, ok){
+  const {error} = await q;
+  if (error) { toast(/row-level|permission/i.test(error.message) ? "You don't have permission to change that" : "Couldn't save: " + error.message); return false; }
+  if (ok) toast(ok); scheduleLoad(0); return true;
+}
+async function worker(path, body){
+  const {data} = await S.sb.auth.getSession();
+  const r = await fetch(CONFIG.WORKER_URL.replace(/\/$/,"") + path, {method: body ? "POST" : "GET", headers:{Authorization:"Bearer " + data.session?.access_token, "Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `Sync service returned ${r.status}`);
+  return j;
+}
+/* writes that also work on the example guild (locally) */
+function saveChar(pid, c){ if (S.demo) { const p = P(pid); const i = p.chars.findIndex(x => x.id === c.id); if (i >= 0) p.chars[i] = c; else p.chars.push(c); render(); return Promise.resolve(true); } return W(S.sb.from("characters").upsert(rowChar(c, pid))); }
+function patchChar(cid, patch, demoPatch){ if (S.demo) { const c = chars().find(x => x.c.id === cid)?.c; if (c) Object.assign(c, demoPatch); render(); return; } return W(S.sb.from("characters").update(patch).eq("id", cid)); }
+function patchMember(pid, patch, ok){ if (S.demo) { Object.assign(P(pid), patch); render(); return; } return W(S.sb.from("members").update(patch).eq("id", pid), ok); }
+const demoBlock = () => { toast("The example guild doesn't save runs"); };
+
+/* ===== render ===== */
+const main = document.getElementById("main");
+function typing(){ const a = document.activeElement; return a && main.contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.type !== "checkbox"; }
+function render(){
+  if (typing() || document.querySelector(".scrim") || S.dragging) { S.needRender = true; return; }
+  S.needRender = false;
+  const tabs = [["plan","Plan a night"],["runs","Runs"],["content","Content"],["roster","Roster"],["me","My characters"],["routine","Routine"]];
+  if (officer() && !S.demo) tabs.push(["members","Members"]);
+  if (!tabs.some(t => t[0] === S.tab)) S.tab = "plan";
+  document.getElementById("tabs").innerHTML = tabs.map(([id,l]) => `<button role="tab" data-tab="${id}" aria-selected="${S.tab === id}">${l}${id === "members" && pending().length ? ` (${pending().length})` : ""}</button>`).join("");
+  document.getElementById("who").innerHTML = whoHTML();
+  const dialFocused = document.activeElement?.id === "dial";
+  const V = {plan:vPlan, runs:vRuns, content:vContent, roster:vRoster, me:vMe, routine:vRoutine, members:vMembers};
+  main.innerHTML = notice() + V[S.tab]();
+  if (S.tab === "plan") wireDial(dialFocused);
+  if (S.tab === "me") wireAvail();
+}
+function whoHTML(){
+  if (S.demo) return `<span class="mist small">Example guild, nothing is saved</span><button class="btn sm" data-act="demo-off">Leave example</button>`;
+  if (!configured) return "";
+  if (!S.session) return `<button class="btn prime" data-act="signin">Sign in with Discord</button>`;
+  return `<span>${esc(S.me?.handle || "Signed in")}</span><button class="btn link" data-act="signout">Sign out</button>`;
+}
+const pending = () => S.members.filter(m => !m.approved && m.user_id);
+function notice(){
+  if (S.demo) return "";
+  if (!configured) return `<div class="notice"><div><b>This board isn't connected to its database yet.</b> <span class="mist">Fill in the settings at the top of index.html. Until then you can look around with made-up players.</span></div><button class="btn prime" data-act="demo-on">Show example guild</button></div>`;
+  if (S.loading) return `<div class="notice"><span class="mist">Loading the board…</span></div>`;
+  if (!S.session) return `<div class="notice"><div><b>Sign in with Discord to see the Legion's board.</b> <span class="mist">An officer approves new members before they can see or add anything.</span></div><div class="row"><button class="btn prime" data-act="signin">Sign in with Discord</button><button class="btn" data-act="demo-on">Show example guild</button></div></div>`;
+  if (S.me && !S.me.approved) return `<div class="notice"><div><b>You're signed in as ${esc(S.me.handle)}.</b> <span class="mist">An officer needs to approve you before the board opens. Ping one in Discord.</span></div><button class="btn" data-act="demo-on">Show example guild</button></div>`;
+  if (!players().some(p => (p.chars||[]).length) && !["me","routine","members"].includes(S.tab)) return `<div class="notice"><div><b>No characters on the board yet.</b> <span class="mist">Add your main and alts, then mark when you're free.</span></div><div class="row"><button class="btn prime" data-tab-go="me">Add my characters</button><button class="btn" data-act="demo-on">Show example guild</button></div></div>`;
+  return "";
+}
+
+/* ---------- Plan ---------- */
+function dialSVG(){
+  const ps = players().filter(p => (p.avail||[]).length).sort((a,b) => String(a.handle).localeCompare(b.handle));
+  const N = ps.length, C = 230, r0 = 84, r1 = 178, w = N ? Math.min(13, (r1 - r0)/N) : 0;
+  const A = k => k/168*2*Math.PI - Math.PI/2, X = (r,a) => (C + r*Math.cos(a)).toFixed(2), Y = (r,a) => (C + r*Math.sin(a)).toFixed(2);
+  const arc = (r,k0,k1) => { const a0 = A(k0), a1 = A(k1); return `M${X(r,a0)} ${Y(r,a0)}A${r} ${r} 0 ${k1-k0 > 84 ? 1 : 0} 1 ${X(r,a1)} ${Y(r,a1)}`; };
+  let g = "";
+  // member orbits
+  ps.forEach((p, i) => {
+    const r = r0 + w*(i + .5), on = new Set(p.avail);
+    g += `<circle class="track" cx="${C}" cy="${C}" r="${r.toFixed(2)}"><title>${esc(p.handle)}</title></circle>`;
+    let k = 0;
+    while (k < 168) { if (!on.has(kUTC(k))) { k++; continue; } let e = k; while (e < 168 && on.has(kUTC(e))) e++;
+      g += `<path class="arc" d="${arc(r, k + .06, e - .06)}" stroke-width="${Math.max(1.5, w*.62).toFixed(2)}" pathLength="1" style="animation-delay:${i*40}ms"><title>${esc(p.handle)}</title></path>`; k = e; }
+  });
+  // alignment density band
+  for (let k = 0; k < 168; k++) { const f = N ? freeAt(kUTC(k))/N : 0; if (f > 0) g += `<path class="band" d="${arc(187, k, k + 1)}" stroke-width="5" stroke-opacity="${(.12 + f*.88).toFixed(2)}"/>`; }
+  // days
+  const today = new Date().getDay();
+  for (let d = 0; d < 7; d++) {
+    const a = A(d*24); g += `<line class="sep" x1="${X(r0 - 12,a)}" y1="${Y(r0 - 12,a)}" x2="${X(198,a)}" y2="${Y(198,a)}"/>`;
+    for (const h of [6,12,18]) { const b = A(d*24 + h); g += `<line class="tick" x1="${X(192,b)}" y1="${Y(192,b)}" x2="${X(197,b)}" y2="${Y(197,b)}"/>`; }
+    const m = A(d*24 + 12); g += `<text class="dl${ORDER[d] === today ? " today" : ""}" x="${X(214,m)}" y="${Y(214,m)}">${DN[ORDER[d]]}</text>`;
+  }
+  // best windows
+  const counts = Array.from({length:168}, (_,k) => [k, freeAt(kUTC(k))]).filter(x => x[1] >= MINP).sort((a,b) => b[1] - a[1]);
+  const best = []; for (const [k] of counts) { if (best.every(b => Math.abs(b - k) > 3)) best.push(k); if (best.length === 3) break; }
+  best.forEach(k => { const a = A(k + .5); g += `<circle class="best" cx="${X(203,a)}" cy="${Y(203,a)}" r="3"><title>${DN[kDay(k)]} ${hr(kHour(k))}: ${freeAt(kUTC(k))} free</title></circle>`; });
+  const nk = nowK() + new Date().getMinutes()/60, na = A(nk);
+  g += `<circle class="now" cx="${X(198,na)}" cy="${Y(198,na)}" r="3.2"><title>Now</title></circle>`;
+  // the alignment ray (rotated to the chosen hour)
+  let bodies = ""; ps.forEach((p, i) => { bodies += `<circle class="body" data-i="${i}" cx="${C}" cy="${(C - (r0 + w*(i + .5))).toFixed(2)}" r="${Math.max(2.5, Math.min(5, w*.42)).toFixed(2)}"/>`; });
+  const k = S.sel, f = freeAt(kUTC(k));
+  return `<svg id="dial" class="${S.intro ? "intro" : ""}" viewBox="0 0 460 460" tabindex="0" role="slider" aria-label="Pick an hour of the reset week" aria-valuemin="0" aria-valuemax="167" aria-valuenow="${k}" aria-valuetext="${DL[kDay(k)]} ${hr(kHour(k))}, ${f} free">
+    ${g}
+    <g id="sel" style="transform-origin:${C}px ${C}px;transform:rotate(${((k + .5)/168*360).toFixed(2)}deg)"><line class="ray" x1="${C}" y1="${C - 64}" x2="${C}" y2="${C - 200}"/>${bodies}</g>
+    <circle class="core" cx="${C}" cy="${C}" r="62"/>
+    <text class="ch" id="dial-h" x="${C}" y="${C + 6}">${hr(kHour(k)).replace(" ","")}</text>
+    <text class="cd" id="dial-d" x="${C}" y="${C + 28}">${DN[kDay(k)]}, ${f} free</text>
+  </svg>`;
+}
+function vPlan(){
+  if (!S.picked) { // until someone picks an hour, show the best-attended hour in the coming week
+    let best = (nowK() + 1) % 168, bv = -1;
+    for (let i = 1; i <= 168; i++) { const k = (nowK() + i) % 168, v = freeAt(kUTC(k)); if (v > bv) { bv = v; best = k; } }
+    S.sel = best;
+  }
+  const k = S.sel, u = kUTC(k), res = planAt(u), start = nextOcc(kDay(k), kHour(k)), total = players().filter(p => (p.avail||[]).length).length;
+  const groups = res.groups.map((x, i) => groupHTML(x.a, x.party, i)).join("");
+  const idle = res.idle.length ? `<p class="idle">Also free: ${res.idle.map(p => esc(p.handle)).join(", ")}. Not enough of them share a dungeon for another group, so it's a good hour for nightmares, trials or matchmaking.</p>` : "";
+  return `<section class="plan">
+    <div class="dialbox">${dialSVG()}
+      <div class="stepper"><button class="btn sm" data-step="-24" aria-label="Previous day">Day back</button><button class="btn sm" data-step="-1" aria-label="Previous hour">Hour back</button><button class="btn sm" data-step="1" aria-label="Next hour">Hour on</button><button class="btn sm" data-step="24" aria-label="Next day">Day on</button></div>
+      <p class="small mist" style="text-align:center;max-width:44ch">Each ring is a member and each arc is an hour they're usually free. Gold dots mark the three hours when the most people are on. Drag around the dial or use the arrow keys.</p>
+    </div>
+    <div style="display:grid;gap:22px;min-width:0">
+      <div class="when"><h3>${DL[kDay(k)]}, ${hr(kHour(k))}</h3><p class="mist">${res.free.length} of ${total} members usually free. Next one is ${esc(fmtDay.format(start))}, shown in ${esc(tz)}.</p></div>
+      ${res.groups.length ? `<div class="groups">${groups}</div>${idle}` : (players().length ? `<div class="panel empty"><h3>No group lines up at this hour</h3><p>Fewer than ${MINP} free members share an eligible dungeon. Try one of the gold dots on the dial.</p></div>${idle}` : "")}
+    </div>
+  </section>
+  ${watchHTML()}`;
+}
+function groupHTML(a, party, i){
+  const roles = party.map(m => roleOf(m.c)), flags = [];
+  if (!roles.includes("Tank")) flags.push("No tank"); if (!roles.includes("Healer") && !roles.includes("Support")) flags.push("No healer");
+  const open = a.size - party.length;
+  return `<article class="group">
+    <div class="ghead"><div><h3>${esc(a.name)}</h3><div class="meta">${party.length} of ${a.size}, item level ${fmt(a.min)}${a.max ? " to " + fmt(a.max - 1) : " and up"}</div></div>${flags.length ? `<span class="flag">${flags.join(", ")}</span>` : ""}</div>
+    <div class="members">${party.map(m => memHTML(m.p, m.c, a)).join("")}${open > 0 ? `<div class="mem open"><span></span><span>${open} open, fill from matchmaking or a late arrival</span></div>` : ""}</div>
+    <div class="gfoot"><button class="btn sm prime" data-act="post" data-i="${i}">Post as a run</button><button class="btn sm" data-act="copy-plan" data-i="${i}">Copy for Discord</button></div>
+  </article>`;
+}
+function memHTML(p, c, a, extra = ""){
+  return `<div class="mem">${roleIcon(c)}<span class="nm"><b>${esc(c.name)}</b> <span class="mist">${esc(p.handle)}</span>${extra}</span>${a?.energy ? gauge(c) : "<span></span>"}<span class="il" title="Item level">${fmt(c.il)}</span></div>`;
+}
+function watchHTML(){
+  const all = chars(); if (!all.length) return "";
+  const capped = all.filter(x => proj(x.c) != null && proj(x.c) >= CAP);
+  const soon = all.filter(x => { const h = toCap(x.c); return h != null && h > 0 && h < 24; }).sort((a,b) => toCap(a.c) - toCap(b.c));
+  const off = all.filter(x => !x.c.energyOn);
+  const li = (arr, f) => arr.length ? `<ul>${arr.slice(0,8).map(f).join("")}</ul>` : "";
+  return `<section style="display:grid;gap:18px"><div class="head"><div><h2>Energy watch</h2><p>Spending Odyle energy before it caps comes first. These are projected from each character's last reading at +120 a day.</p></div></div>
+  <div class="panel watch">
+    <div class="cap"><div class="big">${capped.length}</div><div>Capped now</div>${li(capped, x => `<li><span>${esc(x.c.name)} <span class="mist">${esc(x.p.handle)}</span></span><span>${fmt(x.c.il)}</span></li>`)}</div>
+    <div class="soon"><div class="big">${soon.length}</div><div>Caps within a day</div>${li(soon, x => `<li><span>${esc(x.c.name)} <span class="mist">${esc(x.p.handle)}</span></span><span>${Math.ceil(toCap(x.c))} h</span></li>`)}</div>
+    <div><div class="big">${off.length}</div><div>Not banking yet</div>${li(off, x => `<li><span>${esc(x.c.name)} <span class="mist">${esc(x.p.handle)}</span></span><span>Lv ${n0(x.c.level)}</span></li>`)}<p class="small mist" style="margin-top:10px">Level 22 and the Krao Cave story quest start the stockpile.</p></div>
+  </div></section>`;
+}
+function wireDial(refocus){
+  S.intro = false;
+  const svg = document.getElementById("dial"); if (!svg) return;
+  if (refocus) svg.focus();
+  const ps = players().filter(p => (p.avail||[]).length).sort((a,b) => String(a.handle).localeCompare(b.handle));
+  const pick = e => { const r = svg.getBoundingClientRect(); const x = (e.clientX - r.left)/r.width*460 - 230, y = (e.clientY - r.top)/r.height*460 - 230;
+    let a = Math.atan2(y, x) + Math.PI/2; if (a < 0) a += 2*Math.PI; S.picked = true; setSel(Math.min(167, Math.floor(a/(2*Math.PI)*168)), true); };
+  const setSel = (k, light) => {
+    S.sel = ((k % 168) + 168) % 168;
+    if (!light) { render(); return; }
+    const u = kUTC(S.sel), f = freeAt(u);
+    svg.querySelector("#sel").style.transform = `rotate(${((S.sel + .5)/168*360).toFixed(2)}deg)`;
+    svg.querySelectorAll(".body").forEach(b => b.classList.toggle("on", (ps[+b.dataset.i]?.avail||[]).includes(u)));
+    svg.querySelector("#dial-h").textContent = hr(kHour(S.sel)).replace(" ","");
+    svg.querySelector("#dial-d").textContent = `${DN[kDay(S.sel)]}, ${f} free`;
+  };
+  setSel(S.sel, true);
+  svg.addEventListener("pointerdown", e => { S.dragging = true; svg.classList.add("dragging"); try { svg.setPointerCapture(e.pointerId); } catch {} pick(e); });
+  svg.addEventListener("pointermove", e => { if (S.dragging) pick(e); });
+  const end = () => { if (!S.dragging) return; S.dragging = false; svg.classList.remove("dragging"); render(); };
+  svg.addEventListener("pointerup", end); svg.addEventListener("pointercancel", end);
+  svg.addEventListener("keydown", e => { const d = {ArrowRight:1, ArrowUp:1, ArrowLeft:-1, ArrowDown:-1, PageUp:24, PageDown:-24}[e.key]; if (d) { e.preventDefault(); S.picked = true; setSel(S.sel + d, false); } });
+}
+
+/* ---------- Runs ---------- */
+function vRuns(){
+  const list = runs().filter(r => r.start > Date.now() - 3*3600e3).sort((a,b) => a.start - b.start);
+  const past = runs().filter(r => r.start <= Date.now() - 24*3600e3).length;
+  const days = []; list.forEach(r => { const key = new Date(r.start).toDateString(); let d = days.find(x => x.key === key); if (!d) days.push(d = {key, start:r.start, items:[]}); d.items.push(r); });
+  const d0 = new Date(nextOcc(new Date().getDay(), Math.min(23, new Date().getHours() + 2))), dv = new Date(d0.getTime() - d0.getTimezoneOffset()*60e3).toISOString().slice(0,16);
+  return `<section style="display:grid;gap:26px">
+    <div class="head"><div><h2>Runs</h2><p>Groups for this reset week. Runs posted from Plan a night start with suggested characters, and each player confirms or swaps their own.</p></div>${past && (live() || S.demo) ? `<button class="btn sm" data-act="clear-past">Clear ${past} past run${past > 1 ? "s" : ""}</button>` : ""}</div>
+    ${live() || S.demo ? `<details class="new"><summary>Schedule a run by hand</summary><form id="new-run"><div class="fgrid"><label class="f">Content<select id="nr-act">${ACTS.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></label><label class="f">Starts (${esc(tz)})<input type="datetime-local" id="nr-start" value="${dv}" required></label></div><label class="f">Note<input type="text" id="nr-note" maxlength="160" placeholder="Vakron conquest, four runs. Save your first stigma for the stagger check."></label><div><button class="btn prime" type="submit">Post run</button></div></form></details>` : ""}
+    ${days.length ? `<div class="timeline">${days.map(d => `<div class="tday"><h3>${esc(fmtDay.format(d.start))}</h3><div class="tlist">${d.items.map(runHTML).join("")}</div></div>`).join("")}</div>` : `<div class="panel empty"><h3>Nothing scheduled yet</h3><p>Pick an hour in Plan a night and post the groups it suggests.</p></div>`}
+  </section>`;
+}
+function runHTML(r){
+  const a = ACT[r.act] || {name:r.act, size:r.size || 5, energy:false};
+  const su = Object.entries(r.signups || {}).filter(([,v]) => v && v.c);
+  const mem = su.map(([pid, v]) => { const p = P(pid), c = p?.chars?.find(x => x.id === v.c); return p && c ? {p, c, ok:v.ok, pid} : null; }).filter(Boolean);
+  const meId = S.demo ? null : S.me?.id, mine = meId && r.signups?.[meId]?.c ? r.signups[meId] : null, myP = meId && P(meId);
+  const myOpts = (myP?.chars||[]).filter(c => { const e = elig(a,c); return e.ok || e.soft; }).map(c => `<option value="${esc(c.id)}">${esc(c.name)}, ${fmt(c.il)}</option>`).join("");
+  const open = (r.size || a.size) - mem.length, canDel = live() && (r.by === meId || S.me?.is_officer);
+  let mineCtl = "";
+  if (live()) {
+    if (mine) mineCtl = `${!mine.ok ? `<button class="btn sm prime" data-act="confirm" data-run="${esc(r.id)}">Confirm my spot</button>` : ""}${myOpts ? `<select class="swap" data-run="${esc(r.id)}" style="width:auto"><option value="">Swap character</option>${myOpts}</select>` : ""}<button class="btn sm" data-act="leave" data-run="${esc(r.id)}">Leave</button>`;
+    else if (myOpts && open > 0) mineCtl = `<select class="joinsel" data-run="${esc(r.id)}" style="width:auto">${myOpts}</select><button class="btn sm prime" data-act="join" data-run="${esc(r.id)}">Join</button>`;
+    else mineCtl = `<span class="small mist">${myP?.chars?.length ? "None of your characters fit this one" : "Add characters to join runs"}</span>`;
+  }
+  return `<div class="run"><div class="t">${esc(fmtTime.format(r.start))}<small>${until(r.start)}</small></div>
+    <div class="body"><div class="ghead"><h3>${esc(a.name)}</h3><span class="mist small">${mem.length} of ${r.size || a.size}</span></div>
+      ${r.note ? `<p class="note">${esc(r.note)}</p>` : ""}
+      <div class="members">${mem.map(m => memHTML(m.p, m.c, a, ` <span class="tag ${m.ok ? "ok" : ""}">${m.ok ? "confirmed" : "suggested"}</span>`)).join("")}${open > 0 ? `<div class="mem open"><span></span><span>${open} open</span></div>` : ""}</div>
+      <div class="gfoot">${mineCtl}<button class="btn sm" data-act="copy-run" data-run="${esc(r.id)}">Copy for Discord</button>${canDel ? `<button class="btn sm link warn" data-act="del-run" data-run="${esc(r.id)}">Delete run</button>` : ""}</div>
+    </div></div>`;
+}
+
+/* ---------- Content ---------- */
+function vContent(){
+  return `<section style="display:grid;gap:22px"><div class="head"><div><h2>Content</h2><p>Who still needs each dungeon and when they're free. Brighter cells mean more of a full group is on that hour (${esc(tz)}). Click one to plan it.</p></div></div>
+  <div class="acts">${ACTS.map(actHTML).join("")}</div></section>`;
+}
+function actHTML(a){
+  const rows = chars().map(x => ({...x, e:elig(a, x.c)})).filter(x => x.e.ok || x.e.soft).sort((x,y) => n0(y.c.il) - n0(x.c.il));
+  const ok = rows.filter(x => x.e.ok), soft = rows.filter(x => x.e.soft), owners = new Set(ok.map(x => x.p.id)).size;
+  let heat = "";
+  if (ok.length) {
+    const h = new Array(168).fill(0); players().forEach(p => { if (bestFor(a,p)) (p.avail||[]).forEach(u => h[u]++); });
+    let cells = `<span></span>` + Array.from({length:24}, (_,i) => `<span class="hl">${i % 6 === 0 ? hrs(i) : ""}</span>`).join("");
+    for (let d = 0; d < 7; d++) { cells += `<span class="dl">${DN[ORDER[d]]}</span>`;
+      for (let i = 0; i < 24; i++) { const k = d*24 + i, v = h[kUTC(k)], f = Math.min(1, v/a.size);
+        cells += `<span class="c" ${v ? `data-k="${k}" style="background:color-mix(in srgb,var(--aether) ${Math.round(18 + f*82)}%,var(--line-soft))"` : ""} title="${DN[ORDER[d]]} ${hr(i)}: ${v} free"></span>`; } }
+    heat = `<div class="scrollx"><div class="heat">${cells}</div></div>`;
+  }
+  return `<article class="panel act">
+    <div><h3>${esc(a.name)}</h3><div class="range">${a.kind}, item level ${fmt(a.min)}${a.max ? " to " + fmt(a.max - 1) : " and up"}</div></div>
+    <p class="loot">${esc(a.loot)}</p>
+    <p class="small">${ok.length ? `${ok.length} character${ok.length === 1 ? "" : "s"} from ${owners} player${owners === 1 ? "" : "s"}, groups of ${a.size}` : `<span class="mist">Nobody is in this bracket right now.</span>`}</p>
+    ${rows.length ? `<div class="pills">${ok.map(x => `<span class="pill">${roleIcon(x.c)}${esc(x.c.name)} <span class="mist">${fmt(x.c.il)}</span></span>`).join("")}${soft.map(x => `<span class="pill soft" title="${esc(x.e.why)}">${roleIcon(x.c)}${esc(x.c.name)} <span class="mist">main</span></span>`).join("")}</div>` : ""}
+    ${heat}
+  </article>`;
+}
+
+/* ---------- Roster ---------- */
+function vRoster(){
+  const all = chars().sort((x,y) => n0(y.c.il) - n0(x.c.il));
+  if (!all.length) return `<section style="display:grid;gap:22px"><div class="head"><div><h2>Roster</h2></div></div><div class="panel empty"><h3>No characters yet</h3><p>Each member adds their main, alts and fodder under My characters.</p></div></section>`;
+  const lo = 800, hi = 3000, pos = il => Math.max(0, Math.min(100, (n0(il) - lo)/(hi - lo)*100));
+  const lanes = [], orbs = [], hasCP = all.some(x => x.c.cp);
+  [...all].sort((x,y) => n0(x.c.il) - n0(y.c.il)).forEach(x => { const xp = pos(x.c.il); let l = lanes.findIndex(v => xp - v > 9); if (l < 0) { l = lanes.length; lanes.push(xp); } else lanes[l] = xp; orbs.push({x, xp, l}); });
+  const asc = `<div class="panel ascent"><div class="scrollx"><div class="inner" style="padding-top:64px">
+    <div class="track">${GATES.map(([g,l], i) => `<div class="gate" style="left:${pos(g)}%;top:${i % 2 ? -64 : -38}px;height:${lanes.length*24 + (i % 2 ? 72 : 46)}px"><b>${fmt(g)}</b>${esc(l)}</div>`).join("")}</div>
+    <div class="lanes" style="height:${lanes.length*24 + 6}px">${orbs.map(o => `<div class="orb ${esc(o.x.c.type)}" style="left:${o.xp}%;top:${o.l*24}px" title="${esc(o.x.c.name)}, ${esc(o.x.p.handle)}, ${fmt(o.x.c.il)}"><i></i>${esc(o.x.c.name)}</div>`).join("")}</div>
+  </div></div><div class="legend"><span class="m"><i></i>Main</span><span><i></i>Alt</span><span class="f"><i></i>Fodder</span></div></div>`;
+  const rows = all.map(({p,c}) => {
+    const pity = FARMS.filter(a => elig(a,c).ok || c.farm?.[a.id]).map(a => { const f = c.farm?.[a.id] || {}; return `<span class="${f.done ? "done" : ""}" title="${esc(a.name)}: exploration chest ${n0(f.exp)} of 3, conquest opens ${n0(f.opens)} of 21">${esc(a.name.split(" ")[0])} ${f.done ? "geared" : `${n0(f.exp)}/3, ${n0(f.opens)}/21`}</span>`; }).join("");
+    const sync = c.syncError ? `<span class="dot err" title="Last sync failed: ${esc(c.syncError)}"></span>` : c.syncedAt ? `<span class="dot" title="Synced from the official profile ${ago(c.syncedAt)}"></span>` : "";
+    return `<tr><td>${roleIcon(c)}</td><td><b>${esc(c.name)}</b></td><td class="mist">${esc(p.handle)}</td><td>${esc(c.cls || "")}</td><td><span class="kind ${esc(c.type)}">${esc(c.type)}</span></td><td class="n">${n0(c.level)}</td><td class="n"><b>${fmt(c.il)}</b>${sync}</td>${hasCP ? `<td class="n mist">${c.cp ? fmt(c.cp) : ""}</td>` : ""}<td>${gauge(c)}</td><td><div class="pity">${pity || '<span>none yet</span>'}</div></td><td class="mist" title="${n0(c.green)} green, ${n0(c.blue)} blue${c.orange ? ", orange crafted" : ""}">${n0(c.green)}/5 green, ${n0(c.blue)}/5 blue${c.orange ? ' <span class="dot" style="background:var(--gold)"></span>' : ""}</td></tr>`; }).join("");
+  return `<section style="display:grid;gap:22px"><div class="head"><div><h2>Roster</h2><p>${all.length} characters across ${players().length} members, placed by item level against the gates in our progression path.</p></div></div>
+    ${asc}
+    <div class="tablewrap"><table><thead><tr><th><span class="sr" style="position:absolute;left:-9999px">Role</span></th><th>Character</th><th>Player</th><th>Class</th><th>Type</th><th class="n">Level</th><th class="n">Item level</th>${hasCP ? `<th class="n">Combat power</th>` : ""}<th>Odyle energy</th><th>Pity: exploration, conquest</th><th>Arcana</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </section>`;
+}
+
+/* ---------- My characters ---------- */
+function editable(){ if (S.demo) return DEMO.players.map(p => p.id); const ids = []; if (S.me?.approved) ids.push(S.me.id); if (S.me?.is_officer) S.members.filter(m => m.approved && m.id !== S.me.id).forEach(m => ids.push(m.id)); return ids; }
+function curPid(){ const ids = editable(); return ids.includes(S.editing) ? S.editing : ids[0]; }
+function vMe(){
+  if (!S.demo && !live()) return `<section style="display:grid;gap:22px"><div class="head"><div><h2>My characters</h2></div></div><div class="panel empty"><h3>${S.session ? "Waiting for approval" : "Sign in first"}</h3><p>${S.session ? "Once an officer approves you, you can add your characters here." : "Sign in with Discord, then an officer approves you."}</p></div></section>`;
+  const pid = curPid(), p = P(pid) || {chars:[], avail:[]}, ids = editable(), isMe = !S.demo && pid === S.me?.id;
+  const picker = ids.length > 1 ? `<div class="row"><label class="f" style="display:flex;gap:10px;align-items:center">Editing<select id="who-sel" style="width:auto">${ids.map(id => `<option value="${esc(id)}" ${id === pid ? "selected" : ""}>${id === S.me?.id ? "Me" : esc(P(id)?.handle || "Unnamed")}</option>`).join("")}</select></label>${officer() && !S.demo ? `<button class="btn sm" data-act="add-member">Add someone without Discord</button>` : ""}</div>` : (officer() && !S.demo ? `<div class="row"><button class="btn sm" data-act="add-member">Add someone without Discord</button></div>` : "");
+  return `<section style="display:grid;gap:26px">
+    <div class="head"><div><h2>${isMe || S.demo ? "My characters" : esc(p.handle)}</h2><p>Update item level and energy when you log off. Linked characters refresh their item level from the official profile once a day.</p></div><button class="btn prime" data-act="new-char">Add a character</button></div>
+    ${picker}
+    <div class="panel pad" style="display:grid;gap:8px;max-width:440px"><label class="f" for="handle">Name the Legion knows you by</label><input type="text" id="handle" maxlength="40" value="${esc(p.handle || "")}"></div>
+    ${(p.chars||[]).length ? `<div class="chars">${p.chars.map(charHTML).join("")}</div>` : `<div class="panel empty"><h3>No characters yet</h3><p>Add your main first, then alts and fodder. Alts under level 22 count too, so the board can remind you to get them banking energy.</p><button class="btn prime" data-act="new-char">Add a character</button></div>`}
+    <div style="display:grid;gap:14px"><div class="head"><div><h3>When you're usually free</h3><p>Hours you can usually play, in ${esc(tz)}. Everyone sees them in their own time zone. Tap a cell, or drag with a mouse.</p></div>
+      <div class="row"><button class="btn sm" data-fill="weeknights">Weeknights, 7 to 11 PM</button><button class="btn sm" data-fill="weekends">Weekends, noon to 11 PM</button><button class="btn sm link" data-fill="clear">Clear all</button></div></div>
+      <div class="panel pad scrollx"><div class="avail" id="avail">${availCells(p)}</div></div></div>
+  </section>`;
+}
+function charHTML(c){
+  const nextUp = ACTS.filter(a => elig(a,c).ok).map(a => a.name);
+  const pity = FARMS.filter(a => elig(a,c).ok || c.farm?.[a.id]).map(a => { const f = c.farm?.[a.id] || {}; return `<span class="${f.done ? "done" : ""}">${esc(a.name)} ${f.done ? "geared" : `${n0(f.exp)}/3, ${n0(f.opens)}/21`}</span>`; }).join("");
+  const link = c.charKey ? `Linked to ${esc(c.serverName || REGIONS[c.region] || "official profile")}${c.syncedAt ? `, synced ${ago(c.syncedAt)}` : ", not synced yet"}${c.syncError ? `. Last sync failed: ${esc(c.syncError)}` : ""}` : "Not linked to an official profile";
+  return `<article class="panel char">
+    <div class="top"><div><h3>${esc(c.name)}</h3><div class="sub">${roleIcon(c)}<span>${esc(c.cls)}, level ${n0(c.level)}</span><span class="kind ${esc(c.type)}">${esc(c.type)}</span></div></div><button class="btn sm" data-act="edit-char" data-cid="${esc(c.id)}">Edit</button></div>
+    <div class="qi"><label class="f">Item level<input type="number" class="q-il" data-cid="${esc(c.id)}" value="${n0(c.il)}" min="0" max="9999"></label><label class="f">Energy right now<input type="number" class="q-en" data-cid="${esc(c.id)}" min="0" max="${CAP}" value="${c.energy === "" || c.energy == null ? "" : Math.floor(proj(c) ?? n0(c.energy))}" placeholder="0 to ${CAP}" ${c.energyOn ? "" : "disabled"}></label></div>
+    ${gauge(c)}
+    <p class="small"><span class="mist">Grouped for:</span> ${nextUp.length ? esc(nextUp.join(", ")) : '<span class="mist">nothing yet</span>'}</p>
+    ${pity ? `<div class="pity">${pity}</div>` : ""}
+    <p class="linkline">${link}</p>
+  </article>`;
+}
+function availCells(p){
+  const on = new Set(p.avail||[]);
+  let h = `<span></span>` + ORDER.map(d => `<span class="d">${DN[d]}</span>`).join("");
+  for (let i = 0; i < 24; i++) { h += `<span class="h">${hr(i)}</span>`; for (const d of ORDER) { const u = toUTC(d,i); h += `<button type="button" class="s${on.has(u) ? " on" : ""}" data-u="${u}" aria-pressed="${on.has(u)}" aria-label="${DL[d]} ${hr(i)}"></button>`; } }
+  return h;
+}
+let paint = null, paintMouse = false, availT = null;
+window.addEventListener("pointerup", () => { if (paint !== null) { paint = null; paintMouse = false; queueAvail(); } });
+function wireAvail(){
+  const g = document.getElementById("avail"); if (!g) return;
+  const set = (el, v) => { if (!el?.classList?.contains("s")) return; el.classList.toggle("on", v); el.setAttribute("aria-pressed", String(v)); };
+  g.addEventListener("pointerdown", e => { const el = e.target.closest(".s"); if (!el) return; paint = !el.classList.contains("on"); set(el, paint); paintMouse = e.pointerType === "mouse"; e.preventDefault(); });
+  g.addEventListener("pointerover", e => { if (paint !== null && paintMouse && e.buttons) set(e.target.closest(".s"), paint); });
+  g.addEventListener("click", e => { if (e.detail === 0) { const el = e.target.closest(".s"); if (el) { set(el, !el.classList.contains("on")); queueAvail(); } } });
+}
+function queueAvail(){ clearTimeout(availT); availT = setTimeout(() => { const g = document.getElementById("avail"); if (!g) return; const v = [...g.querySelectorAll(".s.on")].map(b => +b.dataset.u).sort((a,b) => a - b); patchMember(curPid(), {avail:v}, "Availability saved"); }, 500); }
+
+/* ---------- Members (officers) ---------- */
+function vMembers(){
+  const pend = pending(), appr = S.members.filter(m => m.approved);
+  return `<section style="display:grid;gap:26px"><div class="head"><div><h2>Members</h2><p>New sign-ins wait here until an officer lets them in. Officers can edit anyone's characters and delete any run.</p></div></div>
+  <div class="panel pad"><h3 style="margin-bottom:8px">Waiting for approval</h3>${pend.length ? `<div class="mlist">${pend.map(m => `<div class="mrow"><span><b>${esc(m.handle)}</b> <span class="mist small">signed in ${ago(Date.parse(m.created_at))}</span></span><span class="row"><button class="btn sm prime" data-act="approve" data-mid="${esc(m.id)}">Let in</button><button class="btn sm link warn" data-act="remove-member" data-mid="${esc(m.id)}">Turn away</button></span></div>`).join("")}</div>` : `<p class="mist">Nobody is waiting.</p>`}</div>
+  <div class="panel pad"><h3 style="margin-bottom:8px">Legion</h3><div class="mlist">${appr.map(m => `<div class="mrow"><span><b>${esc(m.handle)}</b> <span class="mist small">${m.chars.length} character${m.chars.length === 1 ? "" : "s"}${m.is_officer ? ", officer" : ""}${m.user_id ? "" : ", added by an officer"}</span></span><span class="row">${m.id !== S.me?.id ? `<button class="btn sm" data-act="toggle-officer" data-mid="${esc(m.id)}">${m.is_officer ? "Remove officer" : "Make officer"}</button><button class="btn sm link warn" data-act="remove-member" data-mid="${esc(m.id)}">Remove</button>` : `<span class="mist small">You</span>`}</span></div>`).join("")}</div></div>
+  </section>`;
+}
+
+/* ---------- Routine ---------- */
+function vRoutine(){
+  return `<section style="display:grid;gap:22px"><div class="head"><div><h2>Routine</h2><p>The Legion's progression path and daily checklist. The board's brackets follow these gates.</p></div></div>
+  <div class="routine">
+    <div class="panel pad"><h3 style="margin-bottom:6px">Progression for mains and alts</h3><ol class="steps">
+      <li><span class="il">Lv 45</span><div>Main story, regional quests, sealed dungeons, strongholds.</div></li>
+      <li><span class="il">1,000</span><div>Finish the main story, using lesser manastones as needed.<ul><li>All abyss feathers. One-time, and synced between characters</li><li>Draupnir three times for the pity chest</li><li>Manastones and enhancing up to 1,400. Alts may need extra Draupnir conquest</li></ul></div></li>
+      <li><span class="il">1,400</span><div>Vakron Sky Island for armor and guard, Urugugu Canyon for accessories. Upgrade no higher than +10 on this gear.</div></li>
+      <li><span class="il">1,600</span><div>Transcendence 1 opens. Alts start here. Mains run it once or twice only if they need it to reach 1,900, and otherwise save the energy.</div></li>
+      <li><span class="il">1,900</span><div>Stage 2 Shattered Arkanis and Deus Research. Craft your orange Arcana card.</div></li>
+      <li><span class="il">2,100</span><div>Ferocious Horn Den for armor and guard: clear exploration for the easy pity chest but don't claim it, then run conquest until first pity so you don't claim a piece that drops. Fire Temple for accessories, mostly as a pity chest since crafted is the goal. Stage 3 Arkanis and Deus for blue cards once you reach 2,200.</div></li>
+      <li><span class="il">2,500</span><div>Where this path lands. Ludra opens at 2,800.</div></li>
+    </ol></div>
+    <div style="display:grid;gap:18px;align-content:start">
+      <div class="panel pad"><h3>Every day on your main</h3><ul class="plain"><li>Duty missions for hidden cube keys, non-incursion entrance tickets and Shugo keys</li><li>Shugo on your main only, until every stigma and Daevanion crystal is collected there</li><li>Incursions: one entry a day, banks up to seven</li><li>Nightmares, twice a day</li><li>Command missions, 12 a week, and abyss command missions, 20 a week</li><li>Ascension Trial, 3 a week. If you'll hit the next upgrade point before reset, wait</li><li>Substance morph Odyle energy, 16 a week plus 4 for your main</li><li>Sub shop</li></ul></div>
+      <div class="panel pad"><h3>Every day on alts</h3><ul class="plain"><li>Ascension Trials</li><li>Substance morph Odyle, 4 each with the per-character one</li><li>Sub shop</li><li>Nightmare dungeons</li></ul></div>
+      <div class="panel pad"><h3>Odyle energy</h3><ul class="plain"><li>Every character has its own stockpile: 840 cap for subscribers, +120 a day, which is three chest opens</li><li>Get every alt you can to level 22 and the Krao Cave story quest so it starts banking</li><li>Spending it before it caps is the top priority</li></ul></div>
+    </div>
+  </div></section>`;
+}
+
+/* ===== character editor ===== */
+function openChar(cid){
+  const pid = curPid(), p = P(pid) || {chars:[]}, existing = (p.chars||[]).find(x => x.id === cid);
+  const c = clone(existing || {id:uuid(), name:"", cls:"Templar", role:"", type:(p.chars||[]).length ? "Alt" : "Main", level:45, il:1000, energyOn:true, energy:"", energyAt:0, farm:{}, green:0, blue:0, orange:false, notes:""});
+  const opt = (arr, v) => arr.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
+  const root = document.getElementById("modal-root");
+  let linkChanged = false;
+  const linkBox = () => {
+    if (S.demo) return `<p class="small mist">Linking to official profiles works on the live board.</p>`;
+    if (!workerOn) return `<p class="small mist">Profile sync isn't set up yet. Add the Worker address to the settings in index.html.</p>`;
+    if (c.charKey) return `<p class="small">Linked to <b>${esc(c.name)}</b> on ${esc(c.serverName || "server " + c.serverId)}, ${esc(REGIONS[c.region] || c.region || "")}.${c.syncedAt ? ` Synced ${ago(c.syncedAt)}${c.cp ? `, combat power ${fmt(c.cp)}` : ""}.` : " Saving will pull its item level."}</p><div class="row">${existing && !linkChanged ? `<button type="button" class="btn sm" id="f-sync">Sync now</button>` : ""}<button type="button" class="btn sm link" id="f-unlink">Unlink</button></div>`;
+    return `<div class="row" style="align-items:end"><label class="f" style="flex:1 1 140px">Region<select id="f-region">${Object.entries(REGIONS).map(([k,v]) => `<option value="${k}" ${k === (c.region || "nae") ? "selected" : ""}>${v}</option>`).join("")}</select></label><label class="f" style="flex:2 1 180px">Character name<input type="text" id="f-q" value="${esc(c.name)}"></label><button type="button" class="btn" id="f-find">Find</button></div><div class="found" id="f-found"></div>`;
+  };
+  root.innerHTML = `<div class="scrim" id="scrim"><form class="modal" id="cform" aria-label="Character">
+    <div class="head" style="align-items:center"><h2 style="font-size:2rem">${existing ? esc(c.name) : "Add a character"}</h2><button type="button" class="btn link" data-close>Close</button></div>
+    <fieldset><legend>Official profile</legend><div id="linkbox">${linkBox()}</div></fieldset>
+    <div class="fgrid">
+      <label class="f">Name<input type="text" id="f-name" value="${esc(c.name)}" required maxlength="40"></label>
+      <label class="f">Class<select id="f-cls">${opt(CLASSES, c.cls)}</select></label>
+      <label class="f">Role<select id="f-role"><option value="">From class</option>${ROLES.map(r => `<option ${r === c.role ? "selected" : ""}>${r}</option>`).join("")}</select></label>
+      <label class="f">Type<select id="f-type">${opt(KINDS, c.type)}</select></label>
+      <label class="f">Level<input type="number" id="f-level" value="${n0(c.level)}" min="1" max="99"></label>
+      <label class="f">Item level<input type="number" id="f-il" value="${n0(c.il)}" min="0" max="9999"></label>
+    </div>
+    <fieldset><legend>Odyle energy</legend>
+      <label class="check"><input type="checkbox" id="f-eon" ${c.energyOn ? "checked" : ""}> Banking energy (level 22 and the Krao Cave quest are done)</label>
+      <label class="f" style="max-width:220px">Energy right now<input type="number" id="f-en" min="0" max="${CAP}" placeholder="0 to ${CAP}" value="${c.energy === "" || c.energy == null ? "" : Math.floor(proj(c) ?? n0(c.energy))}"></label>
+    </fieldset>
+    <fieldset><legend>Pity</legend><div class="farm"><span class="hd">Dungeon</span><span class="hd">Exploration chest, of 3</span><span class="hd">Conquest opens, of 21</span><span class="hd">Geared</span>
+      ${FARMS.map(a => { const f = c.farm?.[a.id] || {}; return `<span>${esc(a.name)}</span><input type="number" min="0" max="3" data-fe="${a.id}" value="${n0(f.exp)}" aria-label="${esc(a.name)} exploration chest opens"><input type="number" min="0" max="99" data-fo="${a.id}" value="${n0(f.opens)}" aria-label="${esc(a.name)} conquest opens"><label class="check"><input type="checkbox" data-fd="${a.id}" ${f.done ? "checked" : ""}> done</label>`; }).join("")}
+    </div><p class="small mist">Tick geared once you need nothing else from a dungeon, and the planner stops sending this character there.</p></fieldset>
+    <div class="fgrid">
+      <label class="f">Green Arcana cards<input type="number" id="f-green" min="0" max="5" value="${n0(c.green)}"></label>
+      <label class="f">Blue Arcana cards<input type="number" id="f-blue" min="0" max="5" value="${n0(c.blue)}"></label>
+      <label class="check" style="align-self:end;padding-bottom:8px"><input type="checkbox" id="f-orange" ${c.orange ? "checked" : ""}> Orange card crafted</label>
+    </div>
+    <label class="f">Gear notes<textarea id="f-notes" maxlength="400" placeholder="Missing Vakron gloves, weapon at +8, belt still blue">${esc(c.notes || "")}</textarea></label>
+    <div class="row" style="justify-content:space-between"><div>${existing ? `<button type="button" class="btn link warn" id="f-del">Delete character</button>` : ""}</div><div class="row"><button type="button" class="btn" data-close>Cancel</button><button type="submit" class="btn prime">Save</button></div></div>
+  </form></div>`;
+  const form = document.getElementById("cform"), $ = id => document.getElementById(id);
+  const close = () => { root.innerHTML = ""; if (S.needRender) render(); };
+  root.querySelectorAll("[data-close]").forEach(b => b.onclick = close);
+  $("scrim").addEventListener("mousedown", e => { if (e.target.id === "scrim") close(); });
+  const wireLink = () => {
+    $("linkbox").innerHTML = linkBox();
+    $("f-unlink")?.addEventListener("click", () => { c.region = c.serverId = c.charKey = c.serverName = null; c.syncedAt = 0; linkChanged = true; wireLink(); });
+    $("f-sync")?.addEventListener("click", async () => { const b = $("f-sync"); b.disabled = true; b.textContent = "Syncing…"; try { const r = await worker("/sync", {id:c.id}); toast(`Synced: ${fmt(r.il)} item level`); scheduleLoad(0); close(); } catch (e) { toast(e.message); b.disabled = false; b.textContent = "Sync now"; } });
+    $("f-find")?.addEventListener("click", async () => {
+      const box = $("f-found"), q = $("f-q").value.trim(); if (!q) return;
+      box.innerHTML = `<p class="small mist">Searching…</p>`;
+      try {
+        const r = await worker(`/search?name=${encodeURIComponent(q)}&region=${$("f-region").value}`);
+        box.innerHTML = r.results.length ? r.results.map((x, i) => `<button type="button" data-i="${i}"><b>${esc(x.name)}</b> <span class="mist">level ${x.level ?? "?"} ${esc(x.cls || "")}, ${esc(x.serverName || "server " + x.serverId)}</span></button>`).join("") : `<p class="small mist">No characters by that name in ${REGIONS[$("f-region").value]}.</p>`;
+        box.querySelectorAll("button").forEach(b => b.onclick = () => {
+          const x = r.results[+b.dataset.i];
+          c.region = $("f-region").value; c.serverId = x.serverId; c.charKey = x.characterId; c.serverName = x.serverName; c.syncedAt = 0; linkChanged = true;
+          if (!$("f-name").value.trim() || !existing) { $("f-name").value = x.name; c.name = x.name; }
+          if (x.level) $("f-level").value = x.level;
+          const cl = String(x.cls || "").toLowerCase(), m = /spirit/.test(cl) ? "Elementalist" : CLASSES.find(k => cl.startsWith(k.toLowerCase())); if (m) $("f-cls").value = m;
+          wireLink();
+        });
+      } catch (e) { box.innerHTML = `<p class="small" style="color:var(--rose)">${esc(e.message)}</p>`; }
+    });
+  };
+  wireLink();
+  $("f-del")?.addEventListener("click", async e => {
+    const b = e.currentTarget; if (!b.dataset.armed) { b.dataset.armed = 1; b.textContent = "Click again to delete"; return; }
+    if (S.demo) { p.chars = p.chars.filter(x => x.id !== c.id); close(); render(); return; }
+    close(); await W(S.sb.from("characters").delete().eq("id", c.id), "Character deleted");
+  });
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const prevEn = c.energy === "" || c.energy == null ? "" : String(Math.floor(proj(c) ?? n0(c.energy)));
+    c.name = $("f-name").value.trim() || "Unnamed"; c.cls = $("f-cls").value; c.role = $("f-role").value; c.type = $("f-type").value;
+    c.level = n0($("f-level").value); c.il = n0($("f-il").value); c.energyOn = $("f-eon").checked;
+    const en = $("f-en").value; if (en !== prevEn) { c.energy = en === "" ? "" : Math.min(CAP, n0(en)); c.energyAt = Date.now(); }
+    c.farm = {}; FARMS.forEach(a => { const exp = n0(form.querySelector(`[data-fe="${a.id}"]`).value), opens = n0(form.querySelector(`[data-fo="${a.id}"]`).value), done = form.querySelector(`[data-fd="${a.id}"]`).checked; if (exp || opens || done) c.farm[a.id] = {exp, opens, done}; });
+    c.green = Math.min(5, n0($("f-green").value)); c.blue = Math.min(5, n0($("f-blue").value)); c.orange = $("f-orange").checked; c.notes = $("f-notes").value.trim();
+    root.innerHTML = "";
+    const ok = await saveChar(pid, c);
+    if (!ok) return;
+    toast(existing ? "Saved" : "Character added");
+    if (!S.demo && linkChanged && c.charKey && workerOn) { try { const r = await worker("/sync", {id:c.id}); toast(`Synced: ${fmt(r.il)} item level`); scheduleLoad(0); } catch (err) { toast(err.message); } }
+    if (S.needRender) render();
+  });
+  setTimeout(() => (existing ? $("f-name") : ($("f-q") || $("f-name"))).focus(), 0);
+}
+
+/* ===== Discord text ===== */
+function partyText(a, list, start, note){
+  return [`**${a.name}**, ${fmtFull.format(start)} (${tz})`, ...list.map(m => `- ${m.c.name} (${m.p.handle}), ${roleOf(m.c)}, ${fmt(m.c.il)} IL`), ...(a.size - list.length > 0 ? [`- ${a.size - list.length} open`] : []), ...(note ? [note] : [])].join("\n");
+}
+async function copy(t){ try { await navigator.clipboard.writeText(t); toast("Copied. Paste it in Discord"); } catch { toast("Your browser blocked copying"); } }
+
+/* ===== events ===== */
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-tab],[data-tab-go],[data-act],[data-step],[data-fill],.heat .c[data-k]"); if (!t) return;
+  if (t.dataset.tab) { S.tab = t.dataset.tab; render(); return; }
+  if (t.dataset.tabGo) { e.preventDefault(); S.tab = t.dataset.tabGo; render(); window.scrollTo({top:0}); return; }
+  if (t.dataset.step) { S.picked = true; S.sel =(((S.sel ?? 0) + +t.dataset.step) % 168 + 168) % 168; render(); return; }
+  if (t.dataset.k) { S.picked = true; S.sel = +t.dataset.k; S.tab = "plan"; render(); window.scrollTo({top:0}); return; }
+  if (t.dataset.fill) {
+    const g = document.getElementById("avail"); if (!g) return; const add = new Set();
+    if (t.dataset.fill === "weeknights") for (const d of [1,2,3,4,5]) for (let h = 19; h < 23; h++) add.add(toUTC(d,h));
+    if (t.dataset.fill === "weekends") for (const d of [6,0]) for (let h = 12; h < 23; h++) add.add(toUTC(d,h));
+    g.querySelectorAll(".s").forEach(b => { const v = t.dataset.fill === "clear" ? false : (add.has(+b.dataset.u) || b.classList.contains("on")); b.classList.toggle("on", v); b.setAttribute("aria-pressed", String(v)); });
+    queueAvail(); return;
+  }
+  const act = t.dataset.act;
+  switch (act) {
+    case "signin": S.sb?.auth.signInWithOAuth({provider:"discord", options:{redirectTo: location.origin + location.pathname}}); return;
+    case "signout": await S.sb?.auth.signOut(); return;
+    case "demo-on": S.demo = true; S.editing = null; S.intro = true; S.picked = false; render(); return;
+    case "demo-off": S.demo = false; S.editing = null; S.intro = true; S.picked = false; render(); return;
+    case "new-char": openChar(null); return;
+    case "edit-char": openChar(t.dataset.cid); return;
+    case "add-member": { const id = uuid(); if (await W(S.sb.from("members").insert({id, handle:"New member", approved:true}), "Member added. Rename them below")) { S.editing = id; } return; }
+    case "approve": W(S.sb.from("members").update({approved:true}).eq("id", t.dataset.mid), "Let in"); return;
+    case "toggle-officer": { const m = P(t.dataset.mid); W(S.sb.from("members").update({is_officer:!m.is_officer}).eq("id", m.id), m.is_officer ? "No longer an officer" : "Now an officer"); return; }
+    case "remove-member": if (!t.dataset.armed) { t.dataset.armed = 1; t.textContent = "Click again to confirm"; return; } W(S.sb.from("members").delete().eq("id", t.dataset.mid), "Removed"); return;
+    case "copy-plan": case "post": {
+      const res = planAt(kUTC(S.sel)), x = res.groups[+t.dataset.i]; if (!x) return;
+      const start = nextOcc(kDay(S.sel), kHour(S.sel));
+      if (act === "copy-plan") return copy(partyText(x.a, x.party, start));
+      if (S.demo) return demoBlock();
+      const id = uuid();
+      if (!await W(S.sb.from("runs").insert({id, act:x.a.id, start_at:new Date(start).toISOString(), size:x.a.size, created_by:S.me.id}))) return;
+      await W(S.sb.from("signups").insert(x.party.map(m => ({run_id:id, member_id:m.p.id, char_id:m.c.id, ok:m.p.id === S.me.id}))), "Run posted. Players confirm on the Runs tab");
+      return;
+    }
+    case "clear-past": { if (S.demo) return demoBlock(); W(S.sb.from("runs").delete().lt("start_at", new Date(Date.now() - 864e5).toISOString()), "Past runs cleared"); return; }
+  }
+  const run = t.dataset.run && runs().find(r => r.id === t.dataset.run); if (!run) return;
+  if (act === "copy-run") { const a = ACT[run.act]; const list = Object.entries(run.signups||{}).filter(([,v]) => v?.c).map(([pid,v]) => { const p = P(pid), c = p?.chars?.find(x => x.id === v.c); return p && c ? {p,c} : null; }).filter(Boolean); return copy(partyText(a, list, run.start, run.note)); }
+  if (S.demo) return demoBlock();
+  const me = S.me.id;
+  if (act === "join") { const sel = document.querySelector(`.joinsel[data-run="${CSS.escape(run.id)}"]`); if (sel?.value) W(S.sb.from("signups").upsert({run_id:run.id, member_id:me, char_id:sel.value, ok:true}), "You're in"); }
+  if (act === "confirm") W(S.sb.from("signups").update({ok:true}).eq("run_id", run.id).eq("member_id", me), "Confirmed");
+  if (act === "leave") W(S.sb.from("signups").delete().eq("run_id", run.id).eq("member_id", me), "You left the run");
+  if (act === "del-run") { if (!t.dataset.armed) { t.dataset.armed = 1; t.textContent = "Click again to delete"; return; } W(S.sb.from("runs").delete().eq("id", run.id), "Run deleted"); }
+});
+main.addEventListener("change", e => {
+  const t = e.target;
+  if (t.id === "who-sel") { S.editing = t.value; render(); return; }
+  if (t.id === "handle") { const v = t.value.trim().slice(0,40); if (v) patchMember(curPid(), {handle:v}, "Name saved"); return; }
+  if (t.classList.contains("q-il")) { const v = n0(t.value); patchChar(t.dataset.cid, {il:v}, {il:v}); toast("Item level saved"); return; }
+  if (t.classList.contains("q-en")) { const v = t.value === "" ? null : Math.min(CAP, n0(t.value)), now = Date.now(); patchChar(t.dataset.cid, {energy:v, energy_at:new Date(now).toISOString()}, {energy:v ?? "", energyAt:now}); toast("Energy saved"); return; }
+  if (t.classList.contains("swap") && t.value) { if (S.demo) return demoBlock(); W(S.sb.from("signups").upsert({run_id:t.dataset.run, member_id:S.me.id, char_id:t.value, ok:true}), "Character swapped"); }
+});
+main.addEventListener("submit", async e => {
+  if (e.target.id !== "new-run") return; e.preventDefault();
+  if (S.demo) return demoBlock();
+  const a = ACT[document.getElementById("nr-act").value], start = new Date(document.getElementById("nr-start").value).getTime();
+  if (!Number.isFinite(start)) { toast("Pick a start time"); return; }
+  W(S.sb.from("runs").insert({id:uuid(), act:a.id, start_at:new Date(start).toISOString(), size:a.size, note:document.getElementById("nr-note").value.trim().slice(0,160), created_by:S.me.id}), "Run posted");
+});
+main.addEventListener("focusout", () => setTimeout(() => { if (S.needRender && !typing()) render(); }, 0));
+setInterval(() => { if (!typing() && !S.dragging) render(); }, 5*60e3);
+
+/* ===== star field (dark theme only, static) ===== */
+function stars(){
+  const cv = document.getElementById("stars"), dpr = Math.min(2, devicePixelRatio || 1), w = innerWidth, h = innerHeight;
+  cv.width = w*dpr; cv.height = h*dpr; const x = cv.getContext("2d"); x.scale(dpr, dpr);
+  let s = 7; const rnd = () => (s = (s*16807) % 2147483647) / 2147483647;
+  const n = Math.round(w*h/9000);
+  for (let i = 0; i < n; i++) { const r = rnd() < .92 ? .6 : 1.2; x.globalAlpha = .2 + rnd()*.6; x.fillStyle = rnd() < .15 ? "#e8c67b" : "#cfe6ee"; x.beginPath(); x.arc(rnd()*w, rnd()*h*.85, r, 0, Math.PI*2); x.fill(); }
+}
+stars(); addEventListener("resize", () => { clearTimeout(stars.t); stars.t = setTimeout(stars, 200); });
+
+/* ===== example guild (made up, kept in this browser only) ===== */
+const DEMO = (() => {
+  const now = Date.now(), H = 3600e3, wk = (hours, days) => days.flatMap(d => hours.map(h => toUTC(d,h)));
+  const ch = (name, cls, type, level, il, energy, ago_, farm = {}, cd = {}) => ({id:"x" + name, name, cls, role:"", type, level, il, energyOn:level >= 22, energy, energyAt:now - ago_*H, farm, green:cd.g || 0, blue:cd.b || 0, orange:!!cd.o, notes:""});
+  const players = [
+    {id:"e1", handle:"Vesper", avail:wk([19,20,21,22],[0,1,2,3,4]).concat(wk([13,14,15,16,20,21],[6])), chars:[ch("Altair","Templar","Main",45,2160,520,8,{horn:{exp:3,opens:9}},{g:5,b:2,o:1}), ch("Deneb","Cleric","Alt",45,1720,610,30,{vakron:{exp:3,opens:14}}), ch("Rigel","Sorcerer","Fodder",45,1120,780,20,{draupnir:{exp:2}})]},
+    {id:"e2", handle:"Nadir", avail:wk([20,21,22,23],[1,3,4,5]), chars:[ch("Halcyon","Gladiator","Main",45,2080,300,4,{vakron:{exp:3,opens:21,done:true},urugugu:{exp:3,opens:10}},{g:4}), ch("Sirius","Chanter","Alt",45,1450,840,50)]},
+    {id:"e3", handle:"Corvus", avail:wk([19,20,21],[0,1,2,3,4,5,6]), chars:[ch("Polaris","Cleric","Main",45,2240,700,12,{horn:{exp:2,opens:4}},{g:5,b:1,o:1}), ch("Mira","Ranger","Alt",45,1930,450,10,{},{g:1}), ch("Tycho","Assassin","Alt",18,0,"",0)]},
+    {id:"e4", handle:"Lumen", avail:wk([18,19,20,21,22],[3,4,6,0]), chars:[ch("Solstice","Assassin","Main",45,1980,820,16,{},{g:2}), ch("Castor","Templar","Alt",45,1620,690,22,{vakron:{exp:3,opens:6}})]},
+    {id:"e5", handle:"Sable", avail:wk([21,22,23],[1,2,3,4,5]).concat(wk([14,15,16,17],[6,0])), chars:[ch("Umbriel","Elementalist","Main",45,2120,410,6,{fire:{exp:1,opens:3}},{g:5,o:1}), ch("Vega","Gladiator","Alt",45,1060,800,40,{draupnir:{exp:1}})]},
+    {id:"e6", handle:"Orrery", avail:wk([19,20,21,22],[3,4,5]), chars:[ch("Zenith","Ranger","Main",45,1890,760,14,{vakron:{exp:3,opens:12},urugugu:{exp:3,opens:8}}), ch("Lyra","Cleric","Alt",45,1410,840,60)]}
+  ];
+  return {players, runs:[{id:"r1", act:"vakron", start:nextOcc(3,20), size:5, note:"Example run", by:"e1", signups:{e1:{c:"xDeneb",ok:true}, e4:{c:"xCastor",ok:false}, e6:{c:"xZenith",ok:true}}}]};
+})();
+
+/* ===== boot ===== */
+async function afterAuth(){
+  if (!S.session) { S.me = null; S.members = []; S.runs = []; S.loading = false; render(); return; }
+  const u = S.session.user, md = u.user_metadata || {};
+  let {data} = await S.sb.from("members").select("*").eq("user_id", u.id).maybeSingle();
+  if (!data) {
+    const handle = String(md.custom_claims?.global_name || md.full_name || md.name || md.user_name || "New member").slice(0,40);
+    const ins = await S.sb.from("members").insert({user_id:u.id, handle}).select().single();
+    if (ins.error) { toast("Couldn't create your member entry: " + ins.error.message); S.loading = false; render(); return; }
+    data = ins.data;
+  }
+  S.me = {...data, chars:[]};
+  if (data.approved) { await loadAll(); subscribe(); } else { S.members = [S.me]; S.loading = false; render(); }
+}
+let channel = null;
+function subscribe(){ if (channel) return; channel = S.sb.channel("board").on("postgres_changes", {event:"*", schema:"public"}, () => scheduleLoad()).subscribe(); addEventListener("focus", () => scheduleLoad(0)); }
+render();
+if (configured && window.supabase) {
+  S.sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  S.sb.auth.getSession().then(({data}) => { S.session = data.session; afterAuth(); });
+  S.sb.auth.onAuthStateChange((ev, session) => { const changed = (session?.user?.id || null) !== (S.session?.user?.id || null); S.session = session; if (changed) afterAuth(); });
+} else { S.loading = false; render(); }
+})();
+</script>
+</body>
+</html>
