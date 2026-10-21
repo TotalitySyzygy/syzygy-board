@@ -10,10 +10,11 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Italiana&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
+/* ===== Fill these in (see README). The anon key is safe to publish; the service key is not. ===== */
 window.SYZYGY_CONFIG = {
-  SUPABASE_URL: "https://wktssevdbenoemkqjgyu.supabase.co",
-  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrdHNzZXZkYmVub2Vta3FqZ3l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1ODk5NDIsImV4cCI6MjEwODE2NTk0Mn0.xXf7ju0Ftah3qF4g5BuFDGghfY1CeA9l9pc7taHjeGc",
-  WORKER_URL: "syzygy-sync.hlsteamsmurf1.workers.dev"
+  SUPABASE_URL: "https://YOUR-PROJECT.supabase.co",
+  SUPABASE_ANON_KEY: "YOUR-ANON-KEY",
+  WORKER_URL: "https://syzygy-sync.YOUR-SUBDOMAIN.workers.dev"
 };
 </script>
 <style>
@@ -363,7 +364,7 @@ function toCap(c){ const p = proj(c); return p == null ? null : (CAP - p)/RATE; 
 function urg(c){ const p = proj(c); return p == null ? .4 : p/CAP + (p >= CAP ? .5 : 0); }
 function gauge(c){
   if (!c.energyOn) return `<span class="eg off" title="Reach level 22 and finish the Krao Cave story quest to start banking">Not banking</span>`;
-  const p = proj(c); if (p == null) return `<span class="eg off">No reading</span>`;
+  const p = proj(c); if (p == null) return `<span class="eg off">Not entered</span>`;
   const h = toCap(c), cls = p >= CAP ? "capped" : h < 24 ? "soon" : "", C = 2*Math.PI*9, f = p/CAP;
   const txt = p >= CAP ? "Capped" : h < 24 ? `${Math.floor(p)}, full in ${Math.ceil(h)} h` : `${Math.floor(p)}`;
   return `<span class="eg ${cls}" title="${Math.floor(p)} of ${CAP} Odyle energy, projected at +120 a day"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="t" cx="11" cy="11" r="9"/><circle class="v" cx="11" cy="11" r="9" stroke-dasharray="${(C*f).toFixed(1)} ${C.toFixed(1)}"/></svg>${txt}</span>`;
@@ -408,13 +409,13 @@ function planAt(u){
 const freeAt = u => players().filter(p => (p.avail||[]).includes(u)).length;
 
 /* ===== state ===== */
-const S = {sb:null, session:null, me:null, members:[], runs:[], demo:false, loading:configured, tab:"plan", sel:null, editing:null, needRender:false, intro:true};
-const players = () => S.demo ? DEMO.players : S.members.filter(m => m.approved);
-const runs = () => S.demo ? DEMO.runs : S.runs;
-const P = id => (S.demo ? DEMO.players : S.members).find(p => p.id === id);
+const S = {sb:null, session:null, me:null, members:[], runs:[], loading:configured, tab:"plan", sel:null, editing:null, needRender:false, intro:true};
+const players = () => S.members.filter(m => m.approved);
+const runs = () => S.runs;
+const P = id => S.members.find(p => p.id === id);
 const chars = () => players().flatMap(p => (p.chars||[]).map(c => ({p, c})));
-const live = () => !S.demo && S.sb && S.me?.approved;
-const officer = () => S.demo || (live() && S.me.is_officer);
+const live = () => S.sb && S.me?.approved;
+const officer = () => live() && S.me.is_officer;
 
 /* ===== data layer ===== */
 function mapChar(r){ return {id:r.id, member_id:r.member_id, name:r.name, cls:r.cls, role:r.role||"", type:r.kind, level:r.level, il:r.il, energyOn:r.energy_on, energy:r.energy == null ? "" : r.energy, energyAt:r.energy_at ? Date.parse(r.energy_at) : 0, farm:r.farm||{}, green:r.green, blue:r.blue, orange:r.orange, notes:r.notes||"", region:r.region, serverId:r.server_id, charKey:r.char_key, serverName:r.server_name, cp:r.cp, gear:r.gear, syncedAt:r.synced_at ? Date.parse(r.synced_at) : 0, syncError:r.sync_error, sort:r.sort}; }
@@ -430,7 +431,7 @@ async function loadAll(){
     S.sb.from("runs").select("*").gte("start_at", new Date(Date.now() - 7*864e5).toISOString()).order("start_at"),
     S.sb.from("signups").select("*")
   ]);
-  if (m.error) { toast("Couldn't load the board: " + m.error.message); return; }
+  if (m.error) { console.warn(m.error); toast("Couldn't load the board. Refresh the page to try again."); return; }
   const cs = (c.data||[]).map(mapChar), su = s.data||[];
   S.members = (m.data||[]).map(x => ({...x, avail:x.avail||[], chars:cs.filter(y => y.member_id === x.id)}));
   S.runs = (r.data||[]).map(x => ({id:x.id, act:x.act, start:Date.parse(x.start_at), size:x.size, note:x.note, by:x.created_by, signups:Object.fromEntries(su.filter(y => y.run_id === x.id).map(y => [y.member_id, {c:y.char_id, ok:y.ok}]))}));
@@ -439,21 +440,20 @@ async function loadAll(){
 }
 async function W(q, ok){
   const {error} = await q;
-  if (error) { toast(/row-level|permission/i.test(error.message) ? "You don't have permission to change that" : "Couldn't save: " + error.message); return false; }
+  if (error) { console.warn(error); toast(/row-level|permission/i.test(error.message) ? "You don't have permission to change that" : "Couldn't save that. Try again in a moment."); return false; }
   if (ok) toast(ok); scheduleLoad(0); return true;
 }
 async function worker(path, body){
   const {data} = await S.sb.auth.getSession();
   const r = await fetch(CONFIG.WORKER_URL.replace(/\/$/,"") + path, {method: body ? "POST" : "GET", headers:{Authorization:"Bearer " + data.session?.access_token, "Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined});
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || `Sync service returned ${r.status}`);
+  if (!r.ok) { if (j.detail) console.warn(j.detail); throw new Error(j.error || "Couldn't reach the official profiles right now. Try again later."); }
   return j;
 }
 /* writes that also work on the example guild (locally) */
-function saveChar(pid, c){ if (S.demo) { const p = P(pid); const i = p.chars.findIndex(x => x.id === c.id); if (i >= 0) p.chars[i] = c; else p.chars.push(c); render(); return Promise.resolve(true); } return W(S.sb.from("characters").upsert(rowChar(c, pid))); }
-function patchChar(cid, patch, demoPatch){ if (S.demo) { const c = chars().find(x => x.c.id === cid)?.c; if (c) Object.assign(c, demoPatch); render(); return; } return W(S.sb.from("characters").update(patch).eq("id", cid)); }
-function patchMember(pid, patch, ok){ if (S.demo) { Object.assign(P(pid), patch); render(); return; } return W(S.sb.from("members").update(patch).eq("id", pid), ok); }
-const demoBlock = () => { toast("The example guild doesn't save runs"); };
+function saveChar(pid, c){ return W(S.sb.from("characters").upsert(rowChar(c, pid))); }
+function patchChar(cid, patch){ return W(S.sb.from("characters").update(patch).eq("id", cid)); }
+function patchMember(pid, patch, ok){ return W(S.sb.from("members").update(patch).eq("id", pid), ok); }
 
 /* ===== render ===== */
 const main = document.getElementById("main");
@@ -462,7 +462,7 @@ function render(){
   if (typing() || document.querySelector(".scrim") || S.dragging) { S.needRender = true; return; }
   S.needRender = false;
   const tabs = [["plan","Plan a night"],["runs","Runs"],["content","Content"],["roster","Roster"],["me","My characters"],["routine","Routine"]];
-  if (officer() && !S.demo) tabs.push(["members","Members"]);
+  if (officer()) tabs.push(["members","Members"]);
   if (!tabs.some(t => t[0] === S.tab)) S.tab = "plan";
   document.getElementById("tabs").innerHTML = tabs.map(([id,l]) => `<button role="tab" data-tab="${id}" aria-selected="${S.tab === id}">${l}${id === "members" && pending().length ? ` (${pending().length})` : ""}</button>`).join("");
   document.getElementById("who").innerHTML = whoHTML();
@@ -473,19 +473,17 @@ function render(){
   if (S.tab === "me") wireAvail();
 }
 function whoHTML(){
-  if (S.demo) return `<span class="mist small">Example guild, nothing is saved</span><button class="btn sm" data-act="demo-off">Leave example</button>`;
   if (!configured) return "";
   if (!S.session) return `<button class="btn prime" data-act="signin">Sign in with Discord</button>`;
   return `<span>${esc(S.me?.handle || "Signed in")}</span><button class="btn link" data-act="signout">Sign out</button>`;
 }
 const pending = () => S.members.filter(m => !m.approved && m.user_id);
 function notice(){
-  if (S.demo) return "";
-  if (!configured) return `<div class="notice"><div><b>This board isn't connected to its database yet.</b> <span class="mist">Fill in the settings at the top of index.html. Until then you can look around with made-up players.</span></div><button class="btn prime" data-act="demo-on">Show example guild</button></div>`;
+  if (!configured) return `<div class="notice"><div><b>The board isn't open yet.</b> <span class="mist">Check back soon, or ask an officer in Discord.</span></div></div>`;
   if (S.loading) return `<div class="notice"><span class="mist">Loading the board…</span></div>`;
-  if (!S.session) return `<div class="notice"><div><b>Sign in with Discord to see the Legion's board.</b> <span class="mist">An officer approves new members before they can see or add anything.</span></div><div class="row"><button class="btn prime" data-act="signin">Sign in with Discord</button><button class="btn" data-act="demo-on">Show example guild</button></div></div>`;
-  if (S.me && !S.me.approved) return `<div class="notice"><div><b>You're signed in as ${esc(S.me.handle)}.</b> <span class="mist">An officer needs to approve you before the board opens. Ping one in Discord.</span></div><button class="btn" data-act="demo-on">Show example guild</button></div>`;
-  if (!players().some(p => (p.chars||[]).length) && !["me","routine","members"].includes(S.tab)) return `<div class="notice"><div><b>No characters on the board yet.</b> <span class="mist">Add your main and alts, then mark when you're free.</span></div><div class="row"><button class="btn prime" data-tab-go="me">Add my characters</button><button class="btn" data-act="demo-on">Show example guild</button></div></div>`;
+  if (!S.session) return `<div class="notice"><div><b>Sign in with Discord to see the Legion's board.</b> <span class="mist">An officer approves new members before they can see or add anything.</span></div><button class="btn prime" data-act="signin">Sign in with Discord</button></div>`;
+  if (S.me && !S.me.approved) return `<div class="notice"><div><b>You're signed in as ${esc(S.me.handle)}.</b> <span class="mist">An officer needs to approve you before the board opens. Ping one in Discord.</span></div></div>`;
+  if (!players().some(p => (p.chars||[]).length) && !["me","routine","members"].includes(S.tab)) return `<div class="notice"><div><b>No characters on the board yet.</b> <span class="mist">Add your main and alts, then mark when you're free.</span></div><button class="btn prime" data-tab-go="me">Add my characters</button></div>`;
   return "";
 }
 
@@ -546,7 +544,7 @@ function vPlan(){
     </div>
     <div style="display:grid;gap:22px;min-width:0">
       <div class="when"><h3>${DL[kDay(k)]}, ${hr(kHour(k))}</h3><p class="mist">${res.free.length} of ${total} members usually free. Next one is ${esc(fmtDay.format(start))}, shown in ${esc(tz)}.</p></div>
-      ${res.groups.length ? `<div class="groups">${groups}</div>${idle}` : (players().length ? `<div class="panel empty"><h3>No group lines up at this hour</h3><p>Fewer than ${MINP} free members share an eligible dungeon. Try one of the gold dots on the dial.</p></div>${idle}` : "")}
+      ${res.groups.length ? `<div class="groups">${groups}</div>${idle}` : (players().length ? `<div class="panel empty"><h3>No group lines up at this hour</h3><p>Not enough of the people free at this hour can run the same dungeon. Try one of the gold dots on the dial.</p></div>${idle}` : "")}
     </div>
   </section>
   ${watchHTML()}`;
@@ -570,7 +568,7 @@ function watchHTML(){
   const soon = all.filter(x => { const h = toCap(x.c); return h != null && h > 0 && h < 24; }).sort((a,b) => toCap(a.c) - toCap(b.c));
   const off = all.filter(x => !x.c.energyOn);
   const li = (arr, f) => arr.length ? `<ul>${arr.slice(0,8).map(f).join("")}</ul>` : "";
-  return `<section style="display:grid;gap:18px"><div class="head"><div><h2>Energy watch</h2><p>Spending Odyle energy before it caps comes first. These are projected from each character's last reading at +120 a day.</p></div></div>
+  return `<section style="display:grid;gap:18px"><div class="head"><div><h2>Energy watch</h2><p>Spending Odyle energy before it caps comes first. Counts are estimated from the last energy you entered, plus 120 a day.</p></div></div>
   <div class="panel watch">
     <div class="cap"><div class="big">${capped.length}</div><div>Capped now</div>${li(capped, x => `<li><span>${esc(x.c.name)} <span class="mist">${esc(x.p.handle)}</span></span><span>${fmt(x.c.il)}</span></li>`)}</div>
     <div class="soon"><div class="big">${soon.length}</div><div>Caps within a day</div>${li(soon, x => `<li><span>${esc(x.c.name)} <span class="mist">${esc(x.p.handle)}</span></span><span>${Math.ceil(toCap(x.c))} h</span></li>`)}</div>
@@ -608,8 +606,8 @@ function vRuns(){
   const days = []; list.forEach(r => { const key = new Date(r.start).toDateString(); let d = days.find(x => x.key === key); if (!d) days.push(d = {key, start:r.start, items:[]}); d.items.push(r); });
   const d0 = new Date(nextOcc(new Date().getDay(), Math.min(23, new Date().getHours() + 2))), dv = new Date(d0.getTime() - d0.getTimezoneOffset()*60e3).toISOString().slice(0,16);
   return `<section style="display:grid;gap:26px">
-    <div class="head"><div><h2>Runs</h2><p>Groups for this reset week. Runs posted from Plan a night start with suggested characters, and each player confirms or swaps their own.</p></div>${past && (live() || S.demo) ? `<button class="btn sm" data-act="clear-past">Clear ${past} past run${past > 1 ? "s" : ""}</button>` : ""}</div>
-    ${live() || S.demo ? `<details class="new"><summary>Schedule a run by hand</summary><form id="new-run"><div class="fgrid"><label class="f">Content<select id="nr-act">${ACTS.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></label><label class="f">Starts (${esc(tz)})<input type="datetime-local" id="nr-start" value="${dv}" required></label></div><label class="f">Note<input type="text" id="nr-note" maxlength="160" placeholder="Vakron conquest, four runs. Save your first stigma for the stagger check."></label><div><button class="btn prime" type="submit">Post run</button></div></form></details>` : ""}
+    <div class="head"><div><h2>Runs</h2><p>Groups for this reset week. Runs posted from Plan a night start with suggested characters, and each player confirms or swaps their own.</p></div>${past && live() ? `<button class="btn sm" data-act="clear-past">Clear ${past} past run${past > 1 ? "s" : ""}</button>` : ""}</div>
+    ${live() ? `<details class="new"><summary>Schedule a run by hand</summary><form id="new-run"><div class="fgrid"><label class="f">Content<select id="nr-act">${ACTS.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></label><label class="f">Starts (${esc(tz)})<input type="datetime-local" id="nr-start" value="${dv}" required></label></div><label class="f">Note<input type="text" id="nr-note" maxlength="160" placeholder="Vakron conquest, four runs. Save your first stigma for the stagger check."></label><div><button class="btn prime" type="submit">Post run</button></div></form></details>` : ""}
     ${days.length ? `<div class="timeline">${days.map(d => `<div class="tday"><h3>${esc(fmtDay.format(d.start))}</h3><div class="tlist">${d.items.map(runHTML).join("")}</div></div>`).join("")}</div>` : `<div class="panel empty"><h3>Nothing scheduled yet</h3><p>Pick an hour in Plan a night and post the groups it suggests.</p></div>`}
   </section>`;
 }
@@ -617,7 +615,7 @@ function runHTML(r){
   const a = ACT[r.act] || {name:r.act, size:r.size || 5, energy:false};
   const su = Object.entries(r.signups || {}).filter(([,v]) => v && v.c);
   const mem = su.map(([pid, v]) => { const p = P(pid), c = p?.chars?.find(x => x.id === v.c); return p && c ? {p, c, ok:v.ok, pid} : null; }).filter(Boolean);
-  const meId = S.demo ? null : S.me?.id, mine = meId && r.signups?.[meId]?.c ? r.signups[meId] : null, myP = meId && P(meId);
+  const meId = S.me?.id, mine = meId && r.signups?.[meId]?.c ? r.signups[meId] : null, myP = meId && P(meId);
   const myOpts = (myP?.chars||[]).filter(c => { const e = elig(a,c); return e.ok || e.soft; }).map(c => `<option value="${esc(c.id)}">${esc(c.name)}, ${fmt(c.il)}</option>`).join("");
   const open = (r.size || a.size) - mem.length, canDel = live() && (r.by === meId || S.me?.is_officer);
   let mineCtl = "";
@@ -673,7 +671,7 @@ function vRoster(){
   </div></div><div class="legend"><span class="m"><i></i>Main</span><span><i></i>Alt</span><span class="f"><i></i>Fodder</span></div></div>`;
   const rows = all.map(({p,c}) => {
     const pity = FARMS.filter(a => elig(a,c).ok || c.farm?.[a.id]).map(a => { const f = c.farm?.[a.id] || {}; return `<span class="${f.done ? "done" : ""}" title="${esc(a.name)}: exploration chest ${n0(f.exp)} of 3, conquest opens ${n0(f.opens)} of 21">${esc(a.name.split(" ")[0])} ${f.done ? "geared" : `${n0(f.exp)}/3, ${n0(f.opens)}/21`}</span>`; }).join("");
-    const sync = c.syncError ? `<span class="dot err" title="Last sync failed: ${esc(c.syncError)}"></span>` : c.syncedAt ? `<span class="dot" title="Synced from the official profile ${ago(c.syncedAt)}"></span>` : "";
+    const sync = c.syncError ? `<span class="dot err" title="Couldn't update from the official profile last time"></span>` : c.syncedAt ? `<span class="dot" title="Updated from the official profile ${ago(c.syncedAt)}"></span>` : "";
     return `<tr><td>${roleIcon(c)}</td><td><b>${esc(c.name)}</b></td><td class="mist">${esc(p.handle)}</td><td>${esc(c.cls || "")}</td><td><span class="kind ${esc(c.type)}">${esc(c.type)}</span></td><td class="n">${n0(c.level)}</td><td class="n"><b>${fmt(c.il)}</b>${sync}</td>${hasCP ? `<td class="n mist">${c.cp ? fmt(c.cp) : ""}</td>` : ""}<td>${gauge(c)}</td><td><div class="pity">${pity || '<span>none yet</span>'}</div></td><td class="mist" title="${n0(c.green)} green, ${n0(c.blue)} blue${c.orange ? ", orange crafted" : ""}">${n0(c.green)}/5 green, ${n0(c.blue)}/5 blue${c.orange ? ' <span class="dot" style="background:var(--gold)"></span>' : ""}</td></tr>`; }).join("");
   return `<section style="display:grid;gap:22px"><div class="head"><div><h2>Roster</h2><p>${all.length} characters across ${players().length} members, placed by item level against the gates in our progression path.</p></div></div>
     ${asc}
@@ -682,14 +680,14 @@ function vRoster(){
 }
 
 /* ---------- My characters ---------- */
-function editable(){ if (S.demo) return DEMO.players.map(p => p.id); const ids = []; if (S.me?.approved) ids.push(S.me.id); if (S.me?.is_officer) S.members.filter(m => m.approved && m.id !== S.me.id).forEach(m => ids.push(m.id)); return ids; }
+function editable(){ const ids = []; if (S.me?.approved) ids.push(S.me.id); if (S.me?.is_officer) S.members.filter(m => m.approved && m.id !== S.me.id).forEach(m => ids.push(m.id)); return ids; }
 function curPid(){ const ids = editable(); return ids.includes(S.editing) ? S.editing : ids[0]; }
 function vMe(){
-  if (!S.demo && !live()) return `<section style="display:grid;gap:22px"><div class="head"><div><h2>My characters</h2></div></div><div class="panel empty"><h3>${S.session ? "Waiting for approval" : "Sign in first"}</h3><p>${S.session ? "Once an officer approves you, you can add your characters here." : "Sign in with Discord, then an officer approves you."}</p></div></section>`;
-  const pid = curPid(), p = P(pid) || {chars:[], avail:[]}, ids = editable(), isMe = !S.demo && pid === S.me?.id;
-  const picker = ids.length > 1 ? `<div class="row"><label class="f" style="display:flex;gap:10px;align-items:center">Editing<select id="who-sel" style="width:auto">${ids.map(id => `<option value="${esc(id)}" ${id === pid ? "selected" : ""}>${id === S.me?.id ? "Me" : esc(P(id)?.handle || "Unnamed")}</option>`).join("")}</select></label>${officer() && !S.demo ? `<button class="btn sm" data-act="add-member">Add someone without Discord</button>` : ""}</div>` : (officer() && !S.demo ? `<div class="row"><button class="btn sm" data-act="add-member">Add someone without Discord</button></div>` : "");
+  if (!live()) return `<section style="display:grid;gap:22px"><div class="head"><div><h2>My characters</h2></div></div><div class="panel empty"><h3>${S.session ? "Waiting for approval" : "Sign in first"}</h3><p>${S.session ? "Once an officer approves you, you can add your characters here." : "Sign in with Discord, then an officer approves you."}</p></div></section>`;
+  const pid = curPid(), p = P(pid) || {chars:[], avail:[]}, ids = editable(), isMe = pid === S.me?.id;
+  const picker = ids.length > 1 ? `<div class="row"><label class="f" style="display:flex;gap:10px;align-items:center">Editing<select id="who-sel" style="width:auto">${ids.map(id => `<option value="${esc(id)}" ${id === pid ? "selected" : ""}>${id === S.me?.id ? "Me" : esc(P(id)?.handle || "Unnamed")}</option>`).join("")}</select></label>${officer() ? `<button class="btn sm" data-act="add-member">Add someone without Discord</button>` : ""}</div>` : (officer() ? `<div class="row"><button class="btn sm" data-act="add-member">Add someone without Discord</button></div>` : "");
   return `<section style="display:grid;gap:26px">
-    <div class="head"><div><h2>${isMe || S.demo ? "My characters" : esc(p.handle)}</h2><p>Update item level and energy when you log off. Linked characters refresh their item level from the official profile once a day.</p></div><button class="btn prime" data-act="new-char">Add a character</button></div>
+    <div class="head"><div><h2>${isMe ? "My characters" : esc(p.handle)}</h2><p>Update item level and energy when you log off. Characters linked to their official profile update item level, class and Arcana cards on their own once a day.</p></div><button class="btn prime" data-act="new-char">Add a character</button></div>
     ${picker}
     <div class="panel pad" style="display:grid;gap:8px;max-width:440px"><label class="f" for="handle">Name the Legion knows you by</label><input type="text" id="handle" maxlength="40" value="${esc(p.handle || "")}"></div>
     ${(p.chars||[]).length ? `<div class="chars">${p.chars.map(charHTML).join("")}</div>` : `<div class="panel empty"><h3>No characters yet</h3><p>Add your main first, then alts and fodder. Alts under level 22 count too, so the board can remind you to get them banking energy.</p><button class="btn prime" data-act="new-char">Add a character</button></div>`}
@@ -701,7 +699,7 @@ function vMe(){
 function charHTML(c){
   const nextUp = ACTS.filter(a => elig(a,c).ok).map(a => a.name);
   const pity = FARMS.filter(a => elig(a,c).ok || c.farm?.[a.id]).map(a => { const f = c.farm?.[a.id] || {}; return `<span class="${f.done ? "done" : ""}">${esc(a.name)} ${f.done ? "geared" : `${n0(f.exp)}/3, ${n0(f.opens)}/21`}</span>`; }).join("");
-  const link = c.charKey ? `Linked to ${esc(c.serverName || REGIONS[c.region] || "official profile")}${c.syncedAt ? `, synced ${ago(c.syncedAt)}` : ", not synced yet"}${c.syncError ? `. Last sync failed: ${esc(c.syncError)}` : ""}` : "Not linked to an official profile";
+  const link = c.charKey ? `Linked to ${esc(c.serverName || REGIONS[c.region] || "its official profile")}${c.syncedAt ? `, updated ${ago(c.syncedAt)}` : ""}${c.syncError ? ". The last update didn't go through; it will try again later" : ""}` : "Not linked to an official profile";
   return `<article class="panel char">
     <div class="top"><div><h3>${esc(c.name)}</h3><div class="sub">${roleIcon(c)}<span>${esc(c.cls)}, level ${n0(c.level)}</span><span class="kind ${esc(c.type)}">${esc(c.type)}</span></div></div><button class="btn sm" data-act="edit-char" data-cid="${esc(c.id)}">Edit</button></div>
     <div class="qi"><label class="f">Item level<input type="number" class="q-il" data-cid="${esc(c.id)}" value="${n0(c.il)}" min="0" max="9999"></label><label class="f">Energy right now<input type="number" class="q-en" data-cid="${esc(c.id)}" min="0" max="${CAP}" value="${c.energy === "" || c.energy == null ? "" : Math.floor(proj(c) ?? n0(c.energy))}" placeholder="0 to ${CAP}" ${c.energyOn ? "" : "disabled"}></label></div>
@@ -766,9 +764,8 @@ function openChar(cid){
   const root = document.getElementById("modal-root");
   let linkChanged = false;
   const linkBox = () => {
-    if (S.demo) return `<p class="small mist">Linking to official profiles works on the live board.</p>`;
-    if (!workerOn) return `<p class="small mist">Profile sync isn't set up yet. Add the Worker address to the settings in index.html.</p>`;
-    if (c.charKey) return `<p class="small">Linked to <b>${esc(c.name)}</b> on ${esc(c.serverName || "server " + c.serverId)}, ${esc(REGIONS[c.region] || c.region || "")}.${c.syncedAt ? ` Synced ${ago(c.syncedAt)}${c.cp ? `, combat power ${fmt(c.cp)}` : ""}.` : " Saving will pull its item level."}</p><div class="row">${existing && !linkChanged ? `<button type="button" class="btn sm" id="f-sync">Sync now</button>` : ""}<button type="button" class="btn sm link" id="f-unlink">Unlink</button></div>`;
+    if (!workerOn) return `<p class="small mist">Linking to official profiles isn't available right now. You can still enter everything by hand.</p>`;
+    if (c.charKey) return `<p class="small">Linked to <b>${esc(c.name)}</b> on ${esc(c.serverName || "server " + c.serverId)}, ${esc(REGIONS[c.region] || c.region || "")}.${c.syncedAt ? ` Synced ${ago(c.syncedAt)}${c.cp ? `, combat power ${fmt(c.cp)}` : ""}.` : " Save to bring in its item level and gear."}</p><div class="row">${existing && !linkChanged ? `<button type="button" class="btn sm" id="f-sync">Update now</button>` : ""}<button type="button" class="btn sm link" id="f-unlink">Unlink</button></div>`;
     return `<div class="row" style="align-items:end"><label class="f" style="flex:1 1 140px">Region<select id="f-region">${Object.entries(REGIONS).map(([k,v]) => `<option value="${k}" ${k === (c.region || "nae") ? "selected" : ""}>${v}</option>`).join("")}</select></label><label class="f" style="flex:2 1 180px">Character name<input type="text" id="f-q" value="${esc(c.name)}"></label><button type="button" class="btn" id="f-find">Find</button></div><div class="found" id="f-found"></div>`;
   };
   root.innerHTML = `<div class="scrim" id="scrim"><form class="modal" id="cform" aria-label="Character">
@@ -804,13 +801,13 @@ function openChar(cid){
   const wireLink = () => {
     $("linkbox").innerHTML = linkBox();
     $("f-unlink")?.addEventListener("click", () => { c.region = c.serverId = c.charKey = c.serverName = null; c.syncedAt = 0; linkChanged = true; wireLink(); });
-    $("f-sync")?.addEventListener("click", async () => { const b = $("f-sync"); b.disabled = true; b.textContent = "Syncing…"; try { const r = await worker("/sync", {id:c.id}); toast(`Synced: ${fmt(r.il)} item level`); scheduleLoad(0); close(); } catch (e) { toast(e.message); b.disabled = false; b.textContent = "Sync now"; } });
+    $("f-sync")?.addEventListener("click", async () => { const b = $("f-sync"); b.disabled = true; b.textContent = "Updating…"; try { const r = await worker("/sync", {id:c.id}); toast(`Updated: ${fmt(r.il)} item level`); scheduleLoad(0); close(); } catch (e) { toast(e.message); b.disabled = false; b.textContent = "Update now"; } });
     $("f-find")?.addEventListener("click", async () => {
       const box = $("f-found"), q = $("f-q").value.trim(); if (!q) return;
       box.innerHTML = `<p class="small mist">Searching…</p>`;
       try {
         const r = await worker(`/search?name=${encodeURIComponent(q)}&region=${$("f-region").value}`);
-        box.innerHTML = r.results.length ? r.results.map((x, i) => `<button type="button" data-i="${i}"><b>${esc(x.name)}</b> <span class="mist">level ${x.level ?? "?"} ${esc(x.cls || "")}, ${esc(x.serverName || "server " + x.serverId)}</span></button>`).join("") : `<p class="small mist">No characters by that name in ${REGIONS[$("f-region").value]}.</p>`;
+        box.innerHTML = r.results.length ? r.results.map((x, i) => `<button type="button" data-i="${i}"><b>${esc(x.name)}</b> <span class="mist">level ${x.level ?? "?"}, ${esc(x.serverName || "server " + x.serverId)}, ${x.race === 2 ? "Asmodian" : "Elyos"}</span></button>`).join("") : `<p class="small mist">No characters by that name in ${REGIONS[$("f-region").value]}.</p>`;
         box.querySelectorAll("button").forEach(b => b.onclick = () => {
           const x = r.results[+b.dataset.i];
           c.region = $("f-region").value; c.serverId = x.serverId; c.charKey = x.characterId; c.serverName = x.serverName; c.syncedAt = 0; linkChanged = true;
@@ -825,7 +822,6 @@ function openChar(cid){
   wireLink();
   $("f-del")?.addEventListener("click", async e => {
     const b = e.currentTarget; if (!b.dataset.armed) { b.dataset.armed = 1; b.textContent = "Click again to delete"; return; }
-    if (S.demo) { p.chars = p.chars.filter(x => x.id !== c.id); close(); render(); return; }
     close(); await W(S.sb.from("characters").delete().eq("id", c.id), "Character deleted");
   });
   form.addEventListener("submit", async e => {
@@ -840,7 +836,7 @@ function openChar(cid){
     const ok = await saveChar(pid, c);
     if (!ok) return;
     toast(existing ? "Saved" : "Character added");
-    if (!S.demo && linkChanged && c.charKey && workerOn) { try { const r = await worker("/sync", {id:c.id}); toast(`Synced: ${fmt(r.il)} item level`); scheduleLoad(0); } catch (err) { toast(err.message); } }
+    if (linkChanged && c.charKey && workerOn) { try { const r = await worker("/sync", {id:c.id}); toast(`Linked. Item level ${fmt(r.il)}`); scheduleLoad(0); } catch (err) { toast(err.message); } }
     if (S.needRender) render();
   });
   setTimeout(() => (existing ? $("f-name") : ($("f-q") || $("f-name"))).focus(), 0);
@@ -870,8 +866,6 @@ document.addEventListener("click", async e => {
   switch (act) {
     case "signin": S.sb?.auth.signInWithOAuth({provider:"discord", options:{redirectTo: location.origin + location.pathname}}); return;
     case "signout": await S.sb?.auth.signOut(); return;
-    case "demo-on": S.demo = true; S.editing = null; S.intro = true; S.picked = false; render(); return;
-    case "demo-off": S.demo = false; S.editing = null; S.intro = true; S.picked = false; render(); return;
     case "new-char": openChar(null); return;
     case "edit-char": openChar(t.dataset.cid); return;
     case "add-member": { const id = uuid(); if (await W(S.sb.from("members").insert({id, handle:"New member", approved:true}), "Member added. Rename them below")) { S.editing = id; } return; }
@@ -882,17 +876,15 @@ document.addEventListener("click", async e => {
       const res = planAt(kUTC(S.sel)), x = res.groups[+t.dataset.i]; if (!x) return;
       const start = nextOcc(kDay(S.sel), kHour(S.sel));
       if (act === "copy-plan") return copy(partyText(x.a, x.party, start));
-      if (S.demo) return demoBlock();
       const id = uuid();
       if (!await W(S.sb.from("runs").insert({id, act:x.a.id, start_at:new Date(start).toISOString(), size:x.a.size, created_by:S.me.id}))) return;
       await W(S.sb.from("signups").insert(x.party.map(m => ({run_id:id, member_id:m.p.id, char_id:m.c.id, ok:m.p.id === S.me.id}))), "Run posted. Players confirm on the Runs tab");
       return;
     }
-    case "clear-past": { if (S.demo) return demoBlock(); W(S.sb.from("runs").delete().lt("start_at", new Date(Date.now() - 864e5).toISOString()), "Past runs cleared"); return; }
+    case "clear-past": { W(S.sb.from("runs").delete().lt("start_at", new Date(Date.now() - 864e5).toISOString()), "Past runs cleared"); return; }
   }
   const run = t.dataset.run && runs().find(r => r.id === t.dataset.run); if (!run) return;
   if (act === "copy-run") { const a = ACT[run.act]; const list = Object.entries(run.signups||{}).filter(([,v]) => v?.c).map(([pid,v]) => { const p = P(pid), c = p?.chars?.find(x => x.id === v.c); return p && c ? {p,c} : null; }).filter(Boolean); return copy(partyText(a, list, run.start, run.note)); }
-  if (S.demo) return demoBlock();
   const me = S.me.id;
   if (act === "join") { const sel = document.querySelector(`.joinsel[data-run="${CSS.escape(run.id)}"]`); if (sel?.value) W(S.sb.from("signups").upsert({run_id:run.id, member_id:me, char_id:sel.value, ok:true}), "You're in"); }
   if (act === "confirm") W(S.sb.from("signups").update({ok:true}).eq("run_id", run.id).eq("member_id", me), "Confirmed");
@@ -903,13 +895,12 @@ main.addEventListener("change", e => {
   const t = e.target;
   if (t.id === "who-sel") { S.editing = t.value; render(); return; }
   if (t.id === "handle") { const v = t.value.trim().slice(0,40); if (v) patchMember(curPid(), {handle:v}, "Name saved"); return; }
-  if (t.classList.contains("q-il")) { const v = n0(t.value); patchChar(t.dataset.cid, {il:v}, {il:v}); toast("Item level saved"); return; }
-  if (t.classList.contains("q-en")) { const v = t.value === "" ? null : Math.min(CAP, n0(t.value)), now = Date.now(); patchChar(t.dataset.cid, {energy:v, energy_at:new Date(now).toISOString()}, {energy:v ?? "", energyAt:now}); toast("Energy saved"); return; }
-  if (t.classList.contains("swap") && t.value) { if (S.demo) return demoBlock(); W(S.sb.from("signups").upsert({run_id:t.dataset.run, member_id:S.me.id, char_id:t.value, ok:true}), "Character swapped"); }
+  if (t.classList.contains("q-il")) { const v = n0(t.value); patchChar(t.dataset.cid, {il:v}); toast("Item level saved"); return; }
+  if (t.classList.contains("q-en")) { const v = t.value === "" ? null : Math.min(CAP, n0(t.value)), now = Date.now(); patchChar(t.dataset.cid, {energy:v, energy_at:new Date(now).toISOString()}); toast("Energy saved"); return; }
+  if (t.classList.contains("swap") && t.value) { W(S.sb.from("signups").upsert({run_id:t.dataset.run, member_id:S.me.id, char_id:t.value, ok:true}), "Character swapped"); }
 });
 main.addEventListener("submit", async e => {
   if (e.target.id !== "new-run") return; e.preventDefault();
-  if (S.demo) return demoBlock();
   const a = ACT[document.getElementById("nr-act").value], start = new Date(document.getElementById("nr-start").value).getTime();
   if (!Number.isFinite(start)) { toast("Pick a start time"); return; }
   W(S.sb.from("runs").insert({id:uuid(), act:a.id, start_at:new Date(start).toISOString(), size:a.size, note:document.getElementById("nr-note").value.trim().slice(0,160), created_by:S.me.id}), "Run posted");
@@ -927,21 +918,6 @@ function stars(){
 }
 stars(); addEventListener("resize", () => { clearTimeout(stars.t); stars.t = setTimeout(stars, 200); });
 
-/* ===== example guild (made up, kept in this browser only) ===== */
-const DEMO = (() => {
-  const now = Date.now(), H = 3600e3, wk = (hours, days) => days.flatMap(d => hours.map(h => toUTC(d,h)));
-  const ch = (name, cls, type, level, il, energy, ago_, farm = {}, cd = {}) => ({id:"x" + name, name, cls, role:"", type, level, il, energyOn:level >= 22, energy, energyAt:now - ago_*H, farm, green:cd.g || 0, blue:cd.b || 0, orange:!!cd.o, notes:""});
-  const players = [
-    {id:"e1", handle:"Vesper", avail:wk([19,20,21,22],[0,1,2,3,4]).concat(wk([13,14,15,16,20,21],[6])), chars:[ch("Altair","Templar","Main",45,2160,520,8,{horn:{exp:3,opens:9}},{g:5,b:2,o:1}), ch("Deneb","Cleric","Alt",45,1720,610,30,{vakron:{exp:3,opens:14}}), ch("Rigel","Sorcerer","Fodder",45,1120,780,20,{draupnir:{exp:2}})]},
-    {id:"e2", handle:"Nadir", avail:wk([20,21,22,23],[1,3,4,5]), chars:[ch("Halcyon","Gladiator","Main",45,2080,300,4,{vakron:{exp:3,opens:21,done:true},urugugu:{exp:3,opens:10}},{g:4}), ch("Sirius","Chanter","Alt",45,1450,840,50)]},
-    {id:"e3", handle:"Corvus", avail:wk([19,20,21],[0,1,2,3,4,5,6]), chars:[ch("Polaris","Cleric","Main",45,2240,700,12,{horn:{exp:2,opens:4}},{g:5,b:1,o:1}), ch("Mira","Ranger","Alt",45,1930,450,10,{},{g:1}), ch("Tycho","Assassin","Alt",18,0,"",0)]},
-    {id:"e4", handle:"Lumen", avail:wk([18,19,20,21,22],[3,4,6,0]), chars:[ch("Solstice","Assassin","Main",45,1980,820,16,{},{g:2}), ch("Castor","Templar","Alt",45,1620,690,22,{vakron:{exp:3,opens:6}})]},
-    {id:"e5", handle:"Sable", avail:wk([21,22,23],[1,2,3,4,5]).concat(wk([14,15,16,17],[6,0])), chars:[ch("Umbriel","Elementalist","Main",45,2120,410,6,{fire:{exp:1,opens:3}},{g:5,o:1}), ch("Vega","Gladiator","Alt",45,1060,800,40,{draupnir:{exp:1}})]},
-    {id:"e6", handle:"Orrery", avail:wk([19,20,21,22],[3,4,5]), chars:[ch("Zenith","Ranger","Main",45,1890,760,14,{vakron:{exp:3,opens:12},urugugu:{exp:3,opens:8}}), ch("Lyra","Cleric","Alt",45,1410,840,60)]}
-  ];
-  return {players, runs:[{id:"r1", act:"vakron", start:nextOcc(3,20), size:5, note:"Example run", by:"e1", signups:{e1:{c:"xDeneb",ok:true}, e4:{c:"xCastor",ok:false}, e6:{c:"xZenith",ok:true}}}]};
-})();
-
 /* ===== boot ===== */
 async function afterAuth(){
   if (!S.session) { S.me = null; S.members = []; S.runs = []; S.loading = false; render(); return; }
@@ -950,7 +926,7 @@ async function afterAuth(){
   if (!data) {
     const handle = String(md.custom_claims?.global_name || md.full_name || md.name || md.user_name || "New member").slice(0,40);
     const ins = await S.sb.from("members").insert({user_id:u.id, handle}).select().single();
-    if (ins.error) { toast("Couldn't create your member entry: " + ins.error.message); S.loading = false; render(); return; }
+    if (ins.error) { console.warn(ins.error); toast("Couldn't finish signing you in. Refresh the page to try again."); S.loading = false; render(); return; }
     data = ins.data;
   }
   S.me = {...data, chars:[]};
